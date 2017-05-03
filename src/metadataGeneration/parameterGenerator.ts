@@ -170,7 +170,7 @@ export class ParameterGenerator {
     if (node.type) {
       const t = ResolveType(node.type) as any;
       if (t.enumMembers && t.enumNames && t.enumMembers.length === t.enumNames.length) {
-        return "|name|value|\n|-|-|\n" + _.zip(t.enumMembers, t.enumNames).map(([value, name]) => `|${name}|${value}|`).join("\n");
+        return '|name|value|\n|-|-|\n' + _.zip(t.enumMembers, t.enumNames).map(([value, name]) => `|${name}|${value}|`).join('\n');
       }
     }
 

@@ -92,7 +92,7 @@ export interface Parameter {
   name: string;
   required: boolean;
   default?: string | boolean | number | Object;
-  enum?: number[] | string[],
+  enum?: number[] | string[];
   type: Type;
 }
 
