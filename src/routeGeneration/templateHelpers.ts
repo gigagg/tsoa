@@ -60,7 +60,7 @@ function validateEnum(enumValue: string, name: string, members?: any[]): any {
     throw new InvalidRequestException(name + ' no member.');
   }
   const existValue = members.filter(m => m === enumValue);
-  if (!existValue || !enumValue.length || !existValue.length) {
+  if (!existValue || !existValue.length) {
     throw new InvalidRequestException(name + ' should be one of the following; ' + members.join(', '));
   }
   return existValue[0];
