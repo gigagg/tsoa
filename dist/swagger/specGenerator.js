@@ -64,12 +64,16 @@ var SpecGenerator = (function () {
         var definitions = {};
         Object.keys(this.metadata.ReferenceTypes).map(function (typeName) {
             var referenceType = _this.metadata.ReferenceTypes[typeName];
+            var required = referenceType.properties.filter(function (p) { return p.required; }).map(function (p) { return p.name; });
             definitions[referenceType.typeName] = {
                 description: referenceType.description,
                 properties: _this.buildProperties(referenceType.properties),
-                required: referenceType.properties.filter(function (p) { return p.required; }).map(function (p) { return p.name; }),
+                required: required && required.length > 0 ? required : undefined,
                 type: 'object'
             };
+            if (referenceType.additionalProperties) {
+                definitions[referenceType.typeName].additionalProperties = _this.buildAdditionalProperties(referenceType.additionalProperties);
+            }
         });
         return definitions;
     };
@@ -105,7 +109,7 @@ var SpecGenerator = (function () {
             return !(p.in === 'request' || p.in === 'body-prop');
         })
             .map(function (p) { return _this.buildParameter(p); });
-        var bodyPropParameter = this.buildBodyPropParameter(method);
+        var bodyPropParameter = this.buildBodyPropParameter(controllerName, method);
         if (bodyPropParameter) {
             pathMethod.parameters.push(bodyPropParameter);
         }
@@ -113,7 +117,7 @@ var SpecGenerator = (function () {
             throw new Error('Only one body parameter allowed per controller method.');
         }
     };
-    SpecGenerator.prototype.buildBodyPropParameter = function (method) {
+    SpecGenerator.prototype.buildBodyPropParameter = function (controllerName, method) {
         var _this = this;
         var properties = {};
         var required = [];
@@ -135,7 +139,7 @@ var SpecGenerator = (function () {
             name: 'body',
             schema: {
                 properties: properties,
-                title: 'inline-schema',
+                title: this.getOperationId(controllerName, method.name) + "Body",
                 type: 'object'
             }
         };
@@ -163,6 +167,14 @@ var SpecGenerator = (function () {
         if (parameterType.format) {
             swaggerParameter.format = parameterType.format;
         }
+        swaggerParameter.minimum = parameter.minimum;
+        swaggerParameter.maximum = parameter.maximum;
+        swaggerParameter.minLength = parameter.minLength;
+        swaggerParameter.maxLength = parameter.maxLength;
+        swaggerParameter.pattern = parameter.pattern;
+        swaggerParameter.minItems = parameter.minItems;
+        swaggerParameter.maxItems = parameter.maxItems;
+        swaggerParameter.uniqueItems = parameter.uniqueItems;
         return swaggerParameter;
     };
     SpecGenerator.prototype.buildProperties = function (properties) {
@@ -172,10 +184,29 @@ var SpecGenerator = (function () {
             var swaggerType = _this.getSwaggerType(property.type);
             if (!swaggerType.$ref) {
                 swaggerType.description = property.description;
+                swaggerType.minimum = property.minimum;
+                swaggerType.maximum = property.maximum;
+                swaggerType.minLength = property.minLength;
+                swaggerType.maxLength = property.maxLength;
+                swaggerType.pattern = property.pattern;
+                swaggerType.minItems = property.minItems;
+                swaggerType.maxItems = property.maxItems;
+                swaggerType.uniqueItems = property.uniqueItems;
             }
             swaggerProperties[property.name] = swaggerType;
         });
         return swaggerProperties;
+    };
+    SpecGenerator.prototype.buildAdditionalProperties = function (properties) {
+        var _this = this;
+        var swaggerAdditionalProperties = {};
+        properties.forEach(function (property) {
+            var swaggerType = _this.getSwaggerType(property.type);
+            if (swaggerType.$ref) {
+                swaggerAdditionalProperties['$ref'] = swaggerType.$ref;
+            }
+        });
+        return swaggerAdditionalProperties;
     };
     SpecGenerator.prototype.buildOperation = function (controllerName, method) {
         var _this = this;
@@ -192,10 +223,14 @@ var SpecGenerator = (function () {
             }
         });
         return {
-            operationId: controllerName + "-" + method.name,
+            operationId: this.getOperationId(controllerName, method.name),
             produces: ['application/json'],
             responses: responses
         };
+    };
+    SpecGenerator.prototype.getOperationId = function (controllerName, methodName) {
+        var controllerNameWithoutSuffix = controllerName.replace(new RegExp('Controller$'), '');
+        return "" + controllerNameWithoutSuffix + (methodName.charAt(0).toUpperCase() + methodName.substr(1));
     };
     SpecGenerator.prototype.getSwaggerType = function (type) {
         var swaggerType = this.getSwaggerTypeForPrimitiveType(type);

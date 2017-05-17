@@ -57,8 +57,8 @@ function validateEnum(enumValue, name, members) {
         throw new InvalidRequestException(name + ' no member.');
     }
     var existValue = members.filter(function (m) { return m === enumValue; });
-    if (!existValue || !enumValue.length) {
-        throw new InvalidRequestException(name + ' ' + members.join(','));
+    if (!existValue || !enumValue.length || !existValue.length) {
+        throw new InvalidRequestException(name + ' should be one of the following; ' + members.join(', '));
     }
     return existValue[0];
 }
@@ -97,10 +97,33 @@ function validateBool(boolValue, typeName) {
 function validateModel(modelValue, typeName) {
     var modelDefinition = models[typeName];
     if (modelDefinition) {
-        Object.keys(modelDefinition).forEach(function (key) {
-            var property = modelDefinition[key];
-            modelValue[key] = ValidateParam(property, modelValue[key], models, key);
-        });
+        if (modelDefinition.properties) {
+            Object.keys(modelDefinition.properties).forEach(function (key) {
+                var property = modelDefinition.properties[key];
+                modelValue[key] = ValidateParam(property, modelValue[key], models, key);
+            });
+        }
+        if (modelDefinition.additionalProperties) {
+            Object.keys(modelValue).forEach(function (key) {
+                var validatedValue = null;
+                for (var _i = 0, _a = modelDefinition.additionalProperties; _i < _a.length; _i++) {
+                    var additionalProperty = _a[_i];
+                    try {
+                        validatedValue = ValidateParam(additionalProperty, modelValue[key], models, key);
+                        break;
+                    }
+                    catch (err) {
+                        continue;
+                    }
+                }
+                if (validatedValue) {
+                    modelValue[key] = validatedValue;
+                }
+                else {
+                    throw new Error("No matching model found in additionalProperties to validate " + key);
+                }
+            });
+        }
     }
     return modelValue;
 }

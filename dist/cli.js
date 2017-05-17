@@ -6,6 +6,7 @@ var specGenerator_1 = require("./swagger/specGenerator");
 var routeGenerator_1 = require("./routeGeneration/routeGenerator");
 var yargs = require("yargs");
 var fs = require("fs");
+var path = require("path");
 var workingDir = process.cwd();
 var getPackageJsonValue = function (key) {
     try {
@@ -70,9 +71,19 @@ var validateRoutesConfig = function (config) {
     config.middleware = config.middleware || 'express';
     return config;
 };
-var configuration = {
+var configurationArgs = {
     alias: 'c',
     describe: 'tsoa configuration file; default is tsoa.json in the working directory',
+    required: false,
+    type: 'string'
+};
+var hostArgs = {
+    describe: 'API host',
+    required: false,
+    type: 'string'
+};
+var basePathArgs = {
+    describe: 'Base API path',
     required: false,
     type: 'string'
 };
@@ -80,10 +91,18 @@ yargs
     .usage('Usage: $0 <command> [options]')
     .demand(1)
     .command('swagger', 'Generate swagger spec', {
-    configuration: configuration
+    basePath: basePathArgs,
+    configuration: configurationArgs,
+    host: hostArgs
 }, function (args) {
     try {
         var config = getConfig(args.configuration);
+        if (args.basePath) {
+            config.swagger.basePath = args.basePath;
+        }
+        if (args.host) {
+            config.swagger.host = args.host;
+        }
         var swaggerConfig = validateSwaggerConfig(config.swagger);
         var metadata = new metadataGenerator_1.MetadataGenerator(swaggerConfig.entryFile).Generate();
         new specGenerator_1.SpecGenerator(metadata, config.swagger).GenerateJson(swaggerConfig.outputDirectory);
@@ -93,26 +112,38 @@ yargs
     }
 })
     .command('routes', 'Generate routes', {
-    configuration: configuration
+    basePath: basePathArgs,
+    configuration: configurationArgs
 }, function (args) {
     try {
         var config = getConfig(args.configuration);
+        if (args.basePath) {
+            config.routes.basePath = args.basePath;
+        }
         var routesConfig = validateRoutesConfig(config.routes);
         var metadata = new metadataGenerator_1.MetadataGenerator(routesConfig.entryFile).Generate();
         var routeGenerator = new routeGenerator_1.RouteGenerator(metadata, routesConfig);
+        var pathTransformer = void 0;
+        var template = void 0;
+        pathTransformer = function (path) { return path.replace(/{/g, ':').replace(/}/g, ''); };
         switch (routesConfig.middleware) {
             case 'express':
-                routeGenerator.GenerateExpressRoutes();
+                template = path.join(__dirname, 'routeGeneration/templates/express.ts');
                 break;
             case 'hapi':
-                routeGenerator.GenerateHapiRoutes();
+                template = path.join(__dirname, 'routeGeneration/templates/hapi.ts');
+                pathTransformer = function (path) { return path; };
                 break;
             case 'koa':
-                routeGenerator.GenerateKoaRoutes();
+                template = path.join(__dirname, 'routeGeneration/templates/koa.ts');
                 break;
             default:
-                routeGenerator.GenerateExpressRoutes();
+                template = path.join(__dirname, 'routeGeneration/templates/express.ts');
         }
+        if (routesConfig.middlewareTemplate) {
+            template = routesConfig.middlewareTemplate;
+        }
+        routeGenerator.GenerateCustomRoutes(template, pathTransformer);
     }
     catch (err) {
         console.error(err);

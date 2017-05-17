@@ -51,6 +51,16 @@ export interface Parameter {
     default?: string | boolean | number | Object;
     enum?: number[] | string[];
     type: Type;
+    minLength?: number;
+    maxLength?: number;
+    pattern?: string;
+    minimum?: number;
+    maximum?: number;
+    minItems?: number;
+    maxItems?: number;
+    uniqueItems?: boolean;
+    minDate?: Date;
+    maxDate?: Date;
 }
 export interface Security {
     name: string;
@@ -66,6 +76,7 @@ export interface EnumerateType extends Type {
 export interface ReferenceType extends Type {
     description: string;
     properties: Property[];
+    additionalProperties?: Property[];
 }
 export interface ArrayType extends Type {
     elementType: Type;
@@ -81,4 +92,14 @@ export interface Property {
     name: string;
     type: Type;
     required: boolean;
+    minLength?: number;
+    maxLength?: number;
+    pattern?: string;
+    minimum?: number;
+    maximum?: number;
+    minItems?: number;
+    maxItems?: number;
+    uniqueItems?: boolean;
+    minDate?: Date;
+    maxDate?: Date;
 }

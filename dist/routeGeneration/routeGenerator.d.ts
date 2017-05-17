@@ -5,13 +5,12 @@ export declare class RouteGenerator {
     private readonly options;
     constructor(metadata: Metadata, options: RoutesConfig);
     GenerateRoutes(middlewareTemplate: string, pathTransformer: (path: string) => string): Promise<void>;
-    GenerateExpressRoutes(): Promise<void>;
-    GenerateHapiRoutes(): Promise<void>;
-    GenerateKoaRoutes(): Promise<void>;
+    GenerateCustomRoutes(template: string, pathTransformer: (path: string) => string): void;
     private buildContent(middlewareTemplate, pathTransformer);
     private getModels();
     private getRelativeImportPath(fileLocation);
     private getPropertySchema(source);
+    private getTemplateAdditionalProperty(source);
     private getParameterSchema(parameter);
 }
 export interface ArraySchema {

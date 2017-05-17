@@ -178,11 +178,15 @@ function getReferenceType(type, genericTypes) {
         inProgressTypes[typeNameWithGenerics] = true;
         var modelTypeDeclaration = getModelTypeDeclaration(type);
         var properties = getModelTypeProperties(modelTypeDeclaration, genericTypes);
+        var additionalProperties = getModelTypeAdditionalProperties(modelTypeDeclaration);
         var referenceType = {
             description: getModelDescription(modelTypeDeclaration),
             properties: properties,
             typeName: typeNameWithGenerics,
         };
+        if (additionalProperties && additionalProperties.length) {
+            referenceType.additionalProperties = additionalProperties;
+        }
         var extendedProperties = getInheritedProperties(modelTypeDeclaration);
         referenceType.properties = referenceType.properties.concat(extendedProperties);
         localReferenceTypeCache[typeNameWithGenerics] = referenceType;
@@ -323,8 +327,8 @@ function getModelTypeProperties(node, genericTypes) {
         var interfaceDeclaration = node;
         return interfaceDeclaration.members
             .filter(function (member) { return member.kind === ts.SyntaxKind.PropertySignature; })
-            .map(function (property) {
-            var propertyDeclaration = property;
+            .map(function (member) {
+            var propertyDeclaration = member;
             var identifier = propertyDeclaration.name;
             if (!propertyDeclaration.type) {
                 throw new Error('No valid type found for property declaration.');
@@ -365,7 +369,7 @@ function getModelTypeProperties(node, genericTypes) {
             return {
                 description: getNodeDescription(propertyDeclaration),
                 name: identifier.text,
-                required: !property.questionToken,
+                required: !propertyDeclaration.questionToken,
                 type: type
             };
         });
@@ -397,13 +401,51 @@ function getModelTypeProperties(node, genericTypes) {
         if (!declaration.type) {
             throw new Error('No valid type found for property declaration.');
         }
+        var options = decoratorUtils_1.getDecoratorOptionValue(declaration, function (identify) {
+            return ['IsString', 'IsInt', 'IsLong', 'IsDouble', 'IsFloat', 'IsDate', 'IsDateTime', 'IsArray'].some(function (m) { return m === identify.text; });
+        });
         return {
             description: getNodeDescription(declaration),
             name: identifier.text,
             required: !declaration.questionToken,
-            type: ResolveType(declaration.type)
+            type: ResolveType(declaration.type),
+            // tslint:disable-next-line:object-literal-sort-keys
+            maxLength: options && options.maxLength ? options.maxLength : undefined,
+            minLength: options && options.minLength ? options.minLength : undefined,
+            pattern: options && options.pattern ? options.pattern : undefined,
+            maximum: options && options.max ? options.max : undefined,
+            minimum: options && options.min ? options.min : undefined,
+            maxItems: options && options.maxItems ? options.maxItems : undefined,
+            minItems: options && options.minItems ? options.minItems : undefined,
+            uniqueItens: options && options.uniqueItens ? options.uniqueItens : undefined,
         };
     });
+}
+function getModelTypeAdditionalProperties(node) {
+    try {
+        if (node.kind === ts.SyntaxKind.InterfaceDeclaration) {
+            var interfaceDeclaration = node;
+            return interfaceDeclaration.members
+                .filter(function (member) { return member.kind === ts.SyntaxKind.IndexSignature; })
+                .map(function (member) {
+                var indexSignatureDeclaration = member;
+                var indexType = ResolveType(indexSignatureDeclaration.parameters[0].type);
+                if (indexType.typeName !== 'string') {
+                    throw new Error('Only string indexers are supported ' + indexType.typeName);
+                }
+                return {
+                    description: '',
+                    name: '',
+                    required: true,
+                    type: ResolveType(indexSignatureDeclaration.type)
+                };
+            });
+        }
+    }
+    catch (e) {
+        return undefined;
+    }
+    return undefined;
 }
 function hasPublicModifier(node) {
     return !node.modifiers || node.modifiers.every(function (modifier) {

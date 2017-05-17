@@ -14,6 +14,7 @@ export declare class ParameterGenerator {
     private getHeaderParameter(parameter);
     private getQueryParameter(parameter);
     private getPathParameter(parameter);
+    private getDetailParameter(parameter);
     private getParameterDescription(node);
     private supportsBodyParameters(method);
     private supportParameterDecorator(decoratorName);

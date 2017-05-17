@@ -9,6 +9,14 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
+var __assign = (this && this.__assign) || Object.assign || function(t) {
+    for (var s, i = 1, n = arguments.length; i < n; i++) {
+        s = arguments[i];
+        for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+            t[p] = s[p];
+    }
+    return t;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 var metadataGenerator_1 = require("./metadataGenerator");
 var expressionParser_1 = require("./expressionParser");
@@ -60,7 +68,7 @@ var ParameterGenerator = (function () {
     };
     ParameterGenerator.prototype.getRequestParameter = function (parameter) {
         var parameterName = parameter.name.text;
-        return {
+        return this.getDetailParameter({
             default: this.getDefaultValue(parameter.initializer),
             description: this.getParameterDescription(parameter),
             in: 'request',
@@ -68,7 +76,7 @@ var ParameterGenerator = (function () {
             required: !parameter.questionToken && !parameter.initializer,
             type: { typeName: 'object' },
             parameterName: parameterName
-        };
+        });
     };
     ParameterGenerator.prototype.getBodyPropParameter = function (parameter) {
         var parameterName = parameter.name.text;
@@ -76,7 +84,7 @@ var ParameterGenerator = (function () {
         if (!this.supportsBodyParameters(this.method)) {
             throw new Error("Body can't support '" + this.getCurrentLocation() + "' method.");
         }
-        return {
+        return this.getDetailParameter({
             default: this.getDefaultValue(parameter.initializer),
             description: this.getParameterDescription(parameter),
             in: 'body-prop',
@@ -84,7 +92,7 @@ var ParameterGenerator = (function () {
             required: !parameter.questionToken && !parameter.initializer,
             type: type,
             parameterName: parameterName
-        };
+        });
     };
     ParameterGenerator.prototype.getBodyParameter = function (parameter) {
         var parameterName = parameter.name.text;
@@ -92,14 +100,14 @@ var ParameterGenerator = (function () {
         if (!this.supportsBodyParameters(this.method)) {
             throw new Error("Body can't support " + this.method + " method");
         }
-        return {
+        return this.getDetailParameter({
             description: this.getParameterDescription(parameter),
             in: 'body',
             name: parameterName,
             required: !parameter.questionToken && !parameter.initializer,
             type: type,
             parameterName: parameterName
-        };
+        });
     };
     ParameterGenerator.prototype.getHeaderParameter = function (parameter) {
         var parameterName = parameter.name.text;
@@ -107,15 +115,15 @@ var ParameterGenerator = (function () {
         if (!this.supportPathDataType(type)) {
             throw new InvalidParameterException("Parameter '" + parameterName + "' can't be passed as a header parameter in '" + this.getCurrentLocation() + "'.");
         }
-        return {
+        return this.getDetailParameter({
             default: this.getDefaultValue(parameter.initializer),
             description: this.getParameterDescription(parameter),
             in: 'header',
             name: decoratorUtils_1.getDecoratorTextValue(this.parameter, function (ident) { return ident.text === 'Header'; }) || parameterName,
             required: !parameter.questionToken && !parameter.initializer,
             type: type,
-            parameterName: parameterName
-        };
+            parameterName: parameterName,
+        });
     };
     ParameterGenerator.prototype.getQueryParameter = function (parameter) {
         var parameterName = parameter.name.text;
@@ -123,7 +131,7 @@ var ParameterGenerator = (function () {
         if (!this.supportPathDataType(type)) {
             throw new InvalidParameterException("Parameter '" + parameterName + "' can't be passed as a query parameter in '" + this.getCurrentLocation() + "'.");
         }
-        return {
+        return this.getDetailParameter({
             default: this.getDefaultValue(parameter.initializer),
             description: this.getParameterDescription(parameter),
             enum: this.getEnumValues(parameter),
@@ -132,7 +140,7 @@ var ParameterGenerator = (function () {
             required: !parameter.questionToken && !parameter.initializer,
             type: type,
             parameterName: parameterName
-        };
+        });
     };
     ParameterGenerator.prototype.getPathParameter = function (parameter) {
         var parameterName = parameter.name.text;
@@ -144,14 +152,22 @@ var ParameterGenerator = (function () {
         if (!this.path.includes("{" + pathName + "}")) {
             throw new Error("Parameter '" + parameterName + "' can't macth in path: '" + this.path + "'");
         }
-        return {
+        return this.getDetailParameter({
             description: this.getParameterDescription(parameter),
             in: 'path',
             name: pathName,
             required: true,
             type: type,
             parameterName: parameterName
-        };
+        });
+    };
+    ParameterGenerator.prototype.getDetailParameter = function (parameter) {
+        var options = decoratorUtils_1.getDecoratorOptionValue(this.parameter, function (identifier) {
+            return ['IsString', 'IsInt', 'IsLong', 'IsDouble', 'IsFloat', 'IsDate', 'IsDateTime', 'IsArray'].some(function (m) { return m === identifier.text; });
+        });
+        return __assign({}, parameter, { maxLength: options && options.maxLength ? options.maxLength : undefined, minLength: options && options.minLength ? options.minLength : undefined, pattern: options && options.pattern ? options.pattern : undefined, 
+            // tslint:disable-next-line:object-literal-sort-keys
+            maximum: options && options.max ? options.max : undefined, minimum: options && options.min ? options.min : undefined, maxDate: options && options.maxDate ? options.maxDate : undefined, minDate: options && options.minDate ? options.minDate : undefined, maxItems: options && options.maxItems ? options.maxItems : undefined, minItems: options && options.minItems ? options.minItems : undefined, uniqueItens: options && options.uniqueItens ? options.uniqueItens : undefined });
     };
     ParameterGenerator.prototype.getParameterDescription = function (node) {
         var symbol = metadataGenerator_1.MetadataGenerator.current.typeChecker.getSymbolAtLocation(node.name);
@@ -162,10 +178,10 @@ var ParameterGenerator = (function () {
         if (node.type) {
             var t = resolveType_1.ResolveType(node.type);
             if (t.enumMembers && t.enumNames && t.enumMembers.length === t.enumNames.length) {
-                return "|name|value|\n|-|-|\n" + _.zip(t.enumMembers, t.enumNames).map(function (_a) {
+                return '|name|value|\n|-|-|\n' + _.zip(t.enumMembers, t.enumNames).map(function (_a) {
                     var value = _a[0], name = _a[1];
                     return "|" + name + "|" + value + "|";
-                }).join("\n");
+                }).join('\n');
             }
         }
         return '';

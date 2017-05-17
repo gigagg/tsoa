@@ -2,7 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 var resolveType_1 = require("./resolveType");
 var parameterGenerator_1 = require("./parameterGenerator");
-var expressionParser_1 = require("./expressionParser");
 var jsDocUtils_1 = require("./../utils/jsDocUtils");
 var decoratorUtils_1 = require("./../utils/decoratorUtils");
 var MethodGenerator = (function () {
@@ -163,10 +162,9 @@ var MethodGenerator = (function () {
         return ['get', 'post', 'patch', 'delete', 'put'].some(function (m) { return m === method.toLowerCase(); });
     };
     MethodGenerator.prototype.getExamplesValue = function (argument) {
-        var _this = this;
         var example = {};
         argument.properties.forEach(function (p) {
-            example[p.name.text] = _this.getInitializerValue(p.initializer);
+            example[p.name.text] = decoratorUtils_1.getInitializerValue(p.initializer);
         });
         return example;
     };
@@ -196,14 +194,6 @@ var MethodGenerator = (function () {
             name: expression.arguments[0].text,
             scopes: expression.arguments[1] ? expression.arguments[1].elements.map(function (e) { return e.text; }) : undefined
         };
-    };
-    MethodGenerator.prototype.getInitializerValue = function (initializer) {
-        try {
-            return expressionParser_1.parseExpression(initializer);
-        }
-        catch (e) {
-            return undefined;
-        }
     };
     return MethodGenerator;
 }());

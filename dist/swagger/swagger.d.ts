@@ -35,6 +35,16 @@ export declare namespace Swagger {
         in: string;
         required?: boolean;
         description?: string;
+        maximum?: number;
+        exclusiveMaximum?: number;
+        minimum?: number;
+        exclusiveMinimum?: number;
+        maxLength?: number;
+        minLength?: number;
+        pattern?: string;
+        maxItems?: number;
+        minItems?: number;
+        uniqueItems?: boolean;
     }
     interface BodyParameter extends BaseParameter {
         schema?: Schema;
@@ -120,7 +130,9 @@ export declare namespace Swagger {
     interface Schema extends BaseSchema {
         $ref?: string;
         allOf?: [Schema];
-        additionalProperties?: boolean;
+        additionalProperties?: boolean | {
+            [ref: string]: string;
+        };
         properties?: {
             [propertyName: string]: Schema;
         };

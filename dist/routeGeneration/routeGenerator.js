@@ -1,12 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var express_1 = require("./templates/express");
-var hapi_1 = require("./templates/hapi");
-var koa_1 = require("./templates/koa");
 var fs = require("fs");
 var handlebars = require("handlebars");
 var path = require("path");
 var tsfmt = require("typescript-formatter");
+var handlebarsHelpers = require("handlebars-helpers");
 var RouteGenerator = (function () {
     function RouteGenerator(metadata, options) {
         this.metadata = metadata;
@@ -37,34 +35,39 @@ var RouteGenerator = (function () {
             });
         });
     };
-    RouteGenerator.prototype.GenerateExpressRoutes = function () {
-        return this.GenerateRoutes(express_1.expressTemplate, function (path) { return path.replace(/{/g, ':').replace(/}/g, ''); });
-    };
-    RouteGenerator.prototype.GenerateHapiRoutes = function () {
-        return this.GenerateRoutes(hapi_1.hapiTemplate, function (path) { return path; });
-    };
-    RouteGenerator.prototype.GenerateKoaRoutes = function () {
-        return this.GenerateRoutes(koa_1.koaTemplate, function (path) { return path.replace(/{/g, ':').replace(/}/g, ''); });
+    RouteGenerator.prototype.GenerateCustomRoutes = function (template, pathTransformer) {
+        var _this = this;
+        var file;
+        fs.readFile(path.join(template), function (err, data) {
+            if (err) {
+                throw err;
+            }
+            file = data.toString();
+            return _this.GenerateRoutes(file, pathTransformer);
+        });
     };
     RouteGenerator.prototype.buildContent = function (middlewareTemplate, pathTransformer) {
         var _this = this;
-        var canImportByAlias;
-        try {
-            require('tsoa');
-            canImportByAlias = true;
-        }
-        catch (err) {
-            canImportByAlias = false;
-        }
         handlebars.registerHelper('json', function (context) {
             return JSON.stringify(context);
         });
-        var routesTemplate = handlebars.compile(("/* tslint:disable */\n            import {ValidateParam} from '" + (canImportByAlias ? 'tsoa' : '../../../src/routeGeneration/templateHelpers') + "';\n            import { Controller } from '" + (canImportByAlias ? 'tsoa' : '../../../src/interfaces/controller') + "';\n            {{#if iocModule}}\n            import { iocContainer } from '{{iocModule}}';\n            {{/if}}\n            {{#each controllers}}\n            import { {{name}} } from '{{modulePath}}';\n            {{/each}}\n\n            const models: any = {\n                {{#each models}}\n                \"{{name}}\": {\n                    {{#each properties}}\n                        \"{{@key}}\": {{{json this}}},\n                    {{/each}}\n                },\n                {{/each}}\n            };\n        ").concat(middlewareTemplate), { noEscape: true });
+        handlebarsHelpers.comparison({
+            handlebars: handlebars
+        });
+        var routesTemplate = handlebars.compile(middlewareTemplate, { noEscape: true });
         var authenticationModule = this.options.authenticationModule ? this.getRelativeImportPath(this.options.authenticationModule) : undefined;
         var iocModule = this.options.iocModule ? this.getRelativeImportPath(this.options.iocModule) : undefined;
+        // If we're working locally then tsoa won't exist as an importable module.
+        // So, when in testing mode we reference the module by path instead.
+        var env = process.env.NODE_ENV;
+        var canImportByAlias = true;
+        if (env === 'test') {
+            canImportByAlias = false;
+        }
         return routesTemplate({
             authenticationModule: authenticationModule,
             basePath: this.options.basePath === '/' ? '' : this.options.basePath,
+            canImportByAlias: canImportByAlias,
             controllers: this.metadata.Controllers.map(function (controller) {
                 return {
                     actions: controller.methods.map(function (method) {
@@ -85,6 +88,7 @@ var RouteGenerator = (function () {
                     path: controller.path
                 };
             }),
+            environment: process.env,
             iocModule: iocModule,
             models: this.getModels(),
             useSecurity: this.metadata.Controllers.some(function (controller) { return controller.methods.some(function (methods) { return methods.security !== undefined; }); })
@@ -98,10 +102,14 @@ var RouteGenerator = (function () {
             referenceType.properties.map(function (property) {
                 properties[property.name] = _this.getPropertySchema(property);
             });
-            return {
+            var templateModel = {
                 name: key,
                 properties: properties
             };
+            if (referenceType.additionalProperties && referenceType.additionalProperties.length) {
+                templateModel.additionalProperties = referenceType.additionalProperties.map(function (property) { return _this.getTemplateAdditionalProperty(property); });
+            }
+            return templateModel;
         });
     };
     RouteGenerator.prototype.getRelativeImportPath = function (fileLocation) {
@@ -129,6 +137,12 @@ var RouteGenerator = (function () {
             templateProperty.enumMembers = enumType.enumMembers;
         }
         return templateProperty;
+    };
+    RouteGenerator.prototype.getTemplateAdditionalProperty = function (source) {
+        var templateAdditionalProperty = {
+            typeName: source.type.typeName
+        };
+        return templateAdditionalProperty;
     };
     RouteGenerator.prototype.getParameterSchema = function (parameter) {
         var parameterSchema = {

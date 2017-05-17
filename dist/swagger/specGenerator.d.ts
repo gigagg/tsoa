@@ -10,10 +10,12 @@ export declare class SpecGenerator {
     private buildDefinitions();
     private buildPaths();
     private buildPathMethod(controllerName, method, pathObject);
-    private buildBodyPropParameter(method);
+    private buildBodyPropParameter(controllerName, method);
     private buildParameter(parameter);
     private buildProperties(properties);
+    private buildAdditionalProperties(properties);
     private buildOperation(controllerName, method);
+    private getOperationId(controllerName, methodName);
     private getSwaggerType(type);
     private getSwaggerTypeForPrimitiveType(type);
     private getSwaggerTypeForArrayType(arrayType);

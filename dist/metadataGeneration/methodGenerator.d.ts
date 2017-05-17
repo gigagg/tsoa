@@ -17,5 +17,4 @@ export declare class MethodGenerator {
     private getExamplesValue(argument);
     private getMethodTags();
     private getMethodSecurity();
-    private getInitializerValue(initializer);
 }
