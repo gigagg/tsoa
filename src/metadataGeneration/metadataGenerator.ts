@@ -94,6 +94,16 @@ export interface Parameter {
   default?: string | boolean | number | Object;
   enum?: number[] | string[];
   type: Type;
+  minLength?: number;
+  maxLength?: number;
+  pattern?: string;
+  minimum?: number;
+  maximum?: number;
+  minItems?: number;
+  maxItems?: number;
+  uniqueItems?: boolean;
+  minDate?: Date;
+  maxDate?: Date;
 }
 
 export interface Security {
@@ -132,4 +142,14 @@ export interface Property {
   name: string;
   type: Type;
   required: boolean;
+  minLength?: number;
+  maxLength?: number;
+  pattern?: string;
+  minimum?: number;
+  maximum?: number;
+  minItems?: number;
+  maxItems?: number;
+  uniqueItems?: boolean;
+  minDate?: Date;
+  maxDate?: Date;
 }

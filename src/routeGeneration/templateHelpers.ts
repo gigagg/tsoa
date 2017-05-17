@@ -55,7 +55,7 @@ function validateFloat(numberValue: string, name: string): number {
   return validator.toFloat(numberValue + '');
 }
 
-function validateEnum(enumValue: string, name: string, members?: string[]): any {
+function validateEnum(enumValue: string, name: string, members?: any[]): any {
   if (!members) {
     throw new InvalidRequestException(name + ' no member.');
   }
