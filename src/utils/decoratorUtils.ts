@@ -1,4 +1,5 @@
 import * as ts from 'typescript';
+import { parseExpression } from '../metadataGeneration/expressionParser';
 
 export function getDecorators(node: ts.Node, isMatching: (identifier: ts.Identifier) => boolean) {
   const decorators = node.decorators;
@@ -27,10 +28,28 @@ export function getDecoratorTextValue(node: ts.Node, isMatching: (identifier: ts
   return (expArguments[0] as ts.StringLiteral).text;
 }
 
+export function getDecoratorOptionValue(node: ts.Node, isMatching: (identifier: ts.Identifier) => boolean) {
+  const decorators = getDecorators(node, isMatching);
+  if (!decorators || !decorators.length) { return; }
+
+  const expression = decorators[0].parent as ts.CallExpression;
+  const expArguments = expression.arguments;
+  if (!expArguments || !expArguments.length) { return; }
+  return getInitializerValue(expArguments[0] as any);
+}
+
 export function isDecorator(node: ts.Node, isMatching: (identifier: ts.Identifier) => boolean) {
   const decorators = getDecorators(node, isMatching);
   if (!decorators || !decorators.length) {
     return false;
   }
   return true;
+}
+
+export function getInitializerValue(initializer: ts.Expression) {
+  try {
+    return parseExpression(initializer);
+  } catch (e) {
+    return undefined;
+  }
 }

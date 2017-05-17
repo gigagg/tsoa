@@ -55,13 +55,13 @@ function validateFloat(numberValue: string, name: string): number {
   return validator.toFloat(numberValue + '');
 }
 
-function validateEnum(enumValue: string, name: string, members?: string[]): any {
+function validateEnum(enumValue: string, name: string, members?: any[]): any {
   if (!members) {
     throw new InvalidRequestException(name + ' no member.');
   }
   const existValue = members.filter(m => m === enumValue);
-  if (!existValue || !enumValue.length) {
-    throw new InvalidRequestException(name + ' ' + members.join(','));
+  if (!existValue || !enumValue.length || !existValue.length) {
+    throw new InvalidRequestException(name + ' should be one of the following; ' + members.join(', '));
   }
   return existValue[0];
 }
@@ -103,10 +103,30 @@ function validateModel(modelValue: any, typeName: string): any {
   const modelDefinition = models[typeName];
 
   if (modelDefinition) {
-    Object.keys(modelDefinition).forEach((key: string) => {
-      const property = modelDefinition[key];
-      modelValue[key] = ValidateParam(property, modelValue[key], models, key);
-    });
+    if (modelDefinition.properties) {
+      Object.keys(modelDefinition.properties).forEach((key: string) => {
+        const property = modelDefinition.properties[key];
+        modelValue[key] = ValidateParam(property, modelValue[key], models, key);
+      });
+    }
+    if (modelDefinition.additionalProperties) {
+      Object.keys(modelValue).forEach((key: string) => {
+        let validatedValue = null;
+        for (const additionalProperty of modelDefinition.additionalProperties) {
+          try {
+            validatedValue = ValidateParam(additionalProperty, modelValue[key], models, key);
+            break;
+          } catch (err) {
+            continue;
+          }
+        }
+        if (validatedValue) {
+          modelValue[key] = validatedValue;
+        } else {
+          throw new Error(`No matching model found in additionalProperties to validate ${key}`);
+        }
+      });
+    }
   }
 
   return modelValue;

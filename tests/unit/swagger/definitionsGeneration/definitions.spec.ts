@@ -26,7 +26,7 @@ describe('Definition generation', () => {
 
   describe('Interface-based generation', () => {
     it('should generate a definition for referenced models', () => {
-      const expectedModels = ['TestModel', 'TestSubModel', 'Result', 'TestSubModelContainer', 'TestSubModelContainerNamespace.InnerNamespace.TestSubModelContainer2', 'TestSubModel2'];
+      const expectedModels = ['TestModel', 'TestSubModel', 'Result', 'TestSubModelContainer', 'TestSubModelContainerNamespace.InnerNamespace.TestSubModelContainer2', 'TestSubModel2', 'TestSubModelNamespace.TestSubModelNS'];
       expectedModels.forEach(modelName => {
         getValidatedDefinition(modelName);
       });
@@ -166,6 +166,36 @@ describe('Definition generation', () => {
 
       expect(property).to.exist;
       expect(property.description).to.equal('This is a description for publicConstructorVar');
+    });
+
+    it('should generate a property minLength', () => {
+      const propertyName = 'publicStringProperty';
+
+      const property = properties[propertyName];
+      if (!property) { throw new Error(`There was no '${propertyName}' property.`); }
+
+      expect(property).to.exist;
+      expect(property.minLength).to.equal(3);
+    });
+
+    it('should generate a property maxLength', () => {
+      const propertyName = 'publicStringProperty';
+
+      const property = properties[propertyName];
+      if (!property) { throw new Error(`There was no '${propertyName}' property.`); }
+
+      expect(property).to.exist;
+      expect(property.maxLength).to.equal(20);
+    });
+
+    it('should generate a property pattern', () => {
+      const propertyName = 'publicStringProperty';
+
+      const property = properties[propertyName];
+      if (!property) { throw new Error(`There was no '${propertyName}' property.`); }
+
+      expect(property).to.exist;
+      expect(property.pattern).to.equal('[a-zA-Z]');
     });
   });
 

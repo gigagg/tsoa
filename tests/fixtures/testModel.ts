@@ -1,4 +1,4 @@
-import { IsInt, IsFloat } from './../../src/decorators/validations';
+import { IsInt, IsFloat, IsString } from './../../src/decorators/validations';
 /**
  * This is a description of a model
  */
@@ -22,7 +22,7 @@ export interface TestModel extends Model {
   strLiteralArr: StrLiteral[];
   dateValue?: Date;
   optionalString?: string;
-  // modelsObjectDirect?: {[key: string]: TestSubModel;};
+  // modelsObjectDirect?: {[key: string]: TestSubModel2;};
   modelsObjectIndirect?: TestSubModelContainer;
   modelsObjectIndirectNS?: TestSubModelContainerNamespace.TestSubModelContainer;
   modelsObjectIndirectNS2?: TestSubModelContainerNamespace.InnerNamespace.TestSubModelContainer2;
@@ -43,20 +43,17 @@ export enum EnumStringValue {
 export type StrLiteral = 'Foo' | 'Bar';
 
 export interface TestSubModelContainer {
-  // [key: string]: TestSubModel2;
-  simpleValue: TestSubModel2;
+  [key: string]: TestSubModel2;
 }
 
 export namespace TestSubModelContainerNamespace {
   export interface TestSubModelContainer {
-    // [key: string]: TestSubModel2;
-    simpleValue: TestSubModel2;
+    [key: string]: TestSubModelNamespace.TestSubModelNS;
   }
 
   export namespace InnerNamespace {
     export interface TestSubModelContainer2 {
-      // [key: string]: TestSubModel2;
-      simpleValue: TestSubModel2;
+      [key: string]: TestSubModelNamespace.TestSubModelNS;
     }
   }
 }
@@ -72,6 +69,12 @@ export interface TestSubModel2 extends TestSubModel {
   testSubModel2: boolean;
 }
 
+export namespace TestSubModelNamespace {
+  export interface TestSubModelNS extends TestSubModel {
+    testSubModelNS: boolean;
+  }
+}
+
 export interface BooleanResponseModel {
   success: boolean;
 }
@@ -84,7 +87,7 @@ export interface UserResponseModel {
 export class ParameterTestModel {
   public firstname: string;
   public lastname: string;
-  @IsInt() public age: number;
+  @IsInt({min: 1, max: 10}) public age: number;
   @IsFloat() public weight: number;
   public human: boolean;
   public gender: Gender;
@@ -114,7 +117,9 @@ export class TestClassModel extends TestClassBaseModel {
   /**
   * This is a description of a public string property
   */
+  @IsString({minLength: 3, maxLength: 20, pattern: '[a-zA-Z]'})
   public publicStringProperty: string;
+  @IsString({minLength: 0, maxLength: 10})
   public optionalPublicStringProperty?: string;
   /* tslint:disable-next-line */
   stringProperty: string;

@@ -1,6 +1,6 @@
 import * as ts from 'typescript';
 import { MetadataGenerator, Type, EnumerateType, ReferenceType, ArrayType, Property } from './metadataGenerator';
-import { getDecoratorName } from './../utils/decoratorUtils';
+import { getDecoratorName, getDecoratorOptionValue } from './../utils/decoratorUtils';
 import * as _ from 'lodash';
 
 const syntaxKindMap: { [kind: number]: string } = {};
@@ -190,12 +190,16 @@ function getReferenceType(type: ts.EntityName, genericTypes?: ts.TypeNode[]): Re
     const modelTypeDeclaration = getModelTypeDeclaration(type);
 
     const properties = getModelTypeProperties(modelTypeDeclaration, genericTypes);
+    const additionalProperties = getModelTypeAdditionalProperties(modelTypeDeclaration);
 
     const referenceType: ReferenceType = {
       description: getModelDescription(modelTypeDeclaration),
       properties: properties,
       typeName: typeNameWithGenerics,
     };
+    if (additionalProperties && additionalProperties.length) {
+      referenceType.additionalProperties = additionalProperties;
+    }
 
     const extendedProperties = getInheritedProperties(modelTypeDeclaration);
     referenceType.properties = referenceType.properties.concat(extendedProperties);
@@ -347,9 +351,9 @@ function getModelTypeProperties(node: UsableDeclaration, genericTypes?: ts.TypeN
     const interfaceDeclaration = node as ts.InterfaceDeclaration;
     return interfaceDeclaration.members
       .filter(member => member.kind === ts.SyntaxKind.PropertySignature)
-      .map((property: any) => {
+      .map((member: any) => {
 
-        const propertyDeclaration = property as ts.PropertyDeclaration;
+        const propertyDeclaration = member as ts.PropertyDeclaration;
         const identifier = propertyDeclaration.name as ts.Identifier;
 
         if (!propertyDeclaration.type) { throw new Error('No valid type found for property declaration.'); }
@@ -396,7 +400,7 @@ function getModelTypeProperties(node: UsableDeclaration, genericTypes?: ts.TypeN
         return {
           description: getNodeDescription(propertyDeclaration),
           name: identifier.text,
-          required: !property.questionToken,
+          required: !propertyDeclaration.questionToken,
           type: type
         };
       });
@@ -432,13 +436,53 @@ function getModelTypeProperties(node: UsableDeclaration, genericTypes?: ts.TypeN
 
       if (!declaration.type) { throw new Error('No valid type found for property declaration.'); }
 
+      const options = getDecoratorOptionValue(declaration, identify => {
+        return ['IsString', 'IsInt', 'IsLong', 'IsDouble', 'IsFloat', 'IsDate', 'IsDateTime', 'IsArray'].some(m => m === identify.text);
+      });
+
       return {
         description: getNodeDescription(declaration),
         name: identifier.text,
         required: !declaration.questionToken,
-        type: ResolveType(declaration.type)
+        type: ResolveType(declaration.type),
+        // tslint:disable-next-line:object-literal-sort-keys
+        maxLength: options && options.maxLength ? options.maxLength : undefined,
+        minLength: options && options.minLength ? options.minLength : undefined,
+        pattern: options && options.pattern ? options.pattern : undefined,
+        maximum: options && options.max ? options.max : undefined,
+        minimum: options && options.min ? options.min : undefined,
+        maxItems: options && options.maxItems ? options.maxItems : undefined,
+        minItems: options && options.minItems ? options.minItems : undefined,
+        uniqueItens: options && options.uniqueItens ? options.uniqueItens : undefined,
       };
     });
+}
+
+function getModelTypeAdditionalProperties(node: UsableDeclaration) {
+  try {
+    if (node.kind === ts.SyntaxKind.InterfaceDeclaration) {
+      const interfaceDeclaration = node as ts.InterfaceDeclaration;
+      return interfaceDeclaration.members
+        .filter(member => member.kind === ts.SyntaxKind.IndexSignature)
+        .map((member: any) => {
+          const indexSignatureDeclaration = member as ts.IndexSignatureDeclaration;
+
+          const indexType = ResolveType(<ts.TypeNode>indexSignatureDeclaration.parameters[0].type);
+          if (indexType.typeName !== 'string') { throw new Error('Only string indexers are supported ' + indexType.typeName); }
+
+          return {
+            description: '',
+            name: '',
+            required: true,
+            type: ResolveType(<ts.TypeNode>indexSignatureDeclaration.type)
+          };
+        });
+    }
+  } catch (e) {
+    return undefined;
+  }
+
+  return undefined;
 }
 
 function hasPublicModifier(node: ts.Node) {
