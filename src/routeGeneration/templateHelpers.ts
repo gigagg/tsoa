@@ -55,15 +55,21 @@ function validateFloat(numberValue: string, name: string): number {
   return validator.toFloat(numberValue + '');
 }
 
-function validateEnum(enumValue: string, name: string, members?: any[]): any {
+function validateEnum(enumValue: string|number, name: string, members?: any[]): any {
   if (!members) {
     throw new InvalidRequestException(name + ' no member.');
   }
-  const existValue = members.filter(m => m === enumValue);
-  if (!existValue || !existValue.length) {
-    throw new InvalidRequestException(name + ' should be one of the following; ' + members.join(', '));
+  const valueFound = members.find(m =>  {
+    if (typeof m === 'number' && typeof enumValue !== 'number') {
+      return m === parseInt(enumValue, 10);
+    } else {
+      return m === enumValue;
+    }
+  });
+  if (valueFound === null || valueFound === undefined) {
+    throw new InvalidRequestException(name + ' should be one of the following; ' + members.join(', ') + ', found: ' + enumValue + ' ' + typeof enumValue);
   }
-  return existValue[0];
+  return valueFound;
 }
 
 function validateDate(dateValue: string, name: string): Date {

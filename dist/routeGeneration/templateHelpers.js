@@ -56,11 +56,18 @@ function validateEnum(enumValue, name, members) {
     if (!members) {
         throw new InvalidRequestException(name + ' no member.');
     }
-    var existValue = members.filter(function (m) { return m === enumValue; });
-    if (!existValue || !enumValue.length || !existValue.length) {
-        throw new InvalidRequestException(name + ' should be one of the following; ' + members.join(', '));
+    var valueFound = members.find(function (m) {
+        if (typeof m === 'number' && typeof enumValue !== 'number') {
+            return m === parseInt(enumValue, 10);
+        }
+        else {
+            return m === enumValue;
+        }
+    });
+    if (valueFound === null || valueFound === undefined) {
+        throw new InvalidRequestException(name + ' should be one of the following; ' + members.join(', ') + ', found: ' + enumValue + ' ' + typeof enumValue);
     }
-    return existValue[0];
+    return valueFound;
 }
 function validateDate(dateValue, name) {
     var regEx = /^\d{4}-\d{2}-\d{2}$/;
