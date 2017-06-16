@@ -178,6 +178,10 @@ export class MethodGenerator {
   }
 
   private getExamplesValue(argument: any) {
+    if (argument.kind ===  ts.SyntaxKind.ArrayLiteralExpression) {
+      const arg = argument as ts.ArrayLiteralExpression;
+      return arg.elements.map(element => this.getExamplesValue(element));
+    }
     const example: any = {};
     argument.properties.forEach((p: any) => {
       example[p.name.text] = getInitializerValue(p.initializer);

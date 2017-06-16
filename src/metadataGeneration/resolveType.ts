@@ -35,6 +35,10 @@ export function ResolveType(typeNode: ts.TypeNode): Type {
     return { typeName: 'object' };
   }
 
+  if (typeNode.kind === ts.SyntaxKind.TypeLiteral || typeNode.kind === ts.SyntaxKind.LiteralType) {
+    return { typeName: 'string' };
+  }
+
   if (typeNode.kind !== ts.SyntaxKind.TypeReference) {
     throw new GenerateMetadataError(typeNode, `Unknown type: ${ts.SyntaxKind[typeNode.kind]}`);
   }

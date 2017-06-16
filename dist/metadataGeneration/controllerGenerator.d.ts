@@ -1,5 +1,5 @@
 import * as ts from 'typescript';
-import { Controller } from './metadataGenerator';
+import { Controller } from './types';
 export declare class ControllerGenerator {
     private readonly node;
     private readonly pathValue;

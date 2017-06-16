@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 var ts = require("typescript");
 var methodGenerator_1 = require("./methodGenerator");
+var exceptions_1 = require("./exceptions");
 var ControllerGenerator = (function () {
     function ControllerGenerator(node) {
         this.node = node;
@@ -12,10 +13,10 @@ var ControllerGenerator = (function () {
     };
     ControllerGenerator.prototype.Generate = function () {
         if (!this.node.parent) {
-            throw new Error('Controller node doesn\'t have a valid parent source file.');
+            throw new exceptions_1.GenerateMetadataError(this.node, 'Controller node doesn\'t have a valid parent source file.');
         }
         if (!this.node.name) {
-            throw new Error('Controller node doesn\'t have a valid name.');
+            throw new exceptions_1.GenerateMetadataError(this.node, 'Controller node doesn\'t have a valid name.');
         }
         var sourceFile = this.node.parent.getSourceFile();
         return {
@@ -49,7 +50,7 @@ var ControllerGenerator = (function () {
             return undefined;
         }
         if (matchedAttributes.length > 1) {
-            throw new Error("A controller can only have a single 'decoratorName' decorator in `" + this.node.name.text + "` class.");
+            throw new exceptions_1.GenerateMetadataError(this.node, "A controller can only have a single 'decoratorName' decorator in `" + this.node.name.text + "` class.");
         }
         var value = matchedAttributes[0].arguments[0];
         return value ? value.text : defaultValue;

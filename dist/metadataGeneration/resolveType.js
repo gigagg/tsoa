@@ -1,9 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var ts = require("typescript");
-var metadataGenerator_1 = require("./metadataGenerator");
-var decoratorUtils_1 = require("./../utils/decoratorUtils");
 var _ = require("lodash");
+var metadataGenerator_1 = require("./metadataGenerator");
+var jsDocUtils_1 = require("./../utils/jsDocUtils");
+var validatorUtils_1 = require("./../utils/validatorUtils");
+var exceptions_1 = require("./exceptions");
 var syntaxKindMap = {};
 syntaxKindMap[ts.SyntaxKind.NumberKeyword] = 'number';
 syntaxKindMap[ts.SyntaxKind.StringKeyword] = 'string';
@@ -26,8 +28,11 @@ function ResolveType(typeNode) {
     if (typeNode.kind === ts.SyntaxKind.UnionType) {
         return { typeName: 'object' };
     }
+    if (typeNode.kind === ts.SyntaxKind.TypeLiteral || typeNode.kind === ts.SyntaxKind.LiteralType) {
+        return { typeName: 'string' };
+    }
     if (typeNode.kind !== ts.SyntaxKind.TypeReference) {
-        throw new Error("Unknown type: " + ts.SyntaxKind[typeNode.kind]);
+        throw new exceptions_1.GenerateMetadataError(typeNode, "Unknown type: " + ts.SyntaxKind[typeNode.kind]);
     }
     var typeReference = typeNode;
     if (typeReference.typeName.kind === ts.SyntaxKind.Identifier) {
@@ -72,17 +77,20 @@ function getPrimitiveType(typeNode) {
         if (!parentNode) {
             return { typeName: 'double' };
         }
-        var decoratorName = decoratorUtils_1.getDecoratorName(parentNode, function (identifier) {
-            return ['IsInt', 'IsLong', 'IsFloat', 'isDouble'].some(function (m) { return m === identifier.text; });
+        var tags = jsDocUtils_1.getJSDocTagNames(parentNode).filter(function (name) {
+            return ['isInt', 'isLong', 'isFloat', 'isDouble'].some(function (m) { return m === name; });
         });
-        switch (decoratorName) {
-            case 'IsInt':
+        if (tags.length === 0) {
+            return { typeName: 'double' };
+        }
+        switch (tags[0]) {
+            case 'isInt':
                 return { typeName: 'integer' };
-            case 'IsLong':
+            case 'isLong':
                 return { typeName: 'long' };
-            case 'IsFloat':
+            case 'isFloat':
                 return { typeName: 'float' };
-            case 'IsDouble':
+            case 'isDouble':
                 return { typeName: 'double' };
             default:
                 return { typeName: 'double' };
@@ -95,13 +103,16 @@ function getDateType(typeNode) {
     if (!parentNode) {
         return { typeName: 'datetime' };
     }
-    var decoratorName = decoratorUtils_1.getDecoratorName(parentNode, function (identifier) {
-        return ['IsDate', 'IsDateTime'].some(function (m) { return m === identifier.text; });
+    var tags = jsDocUtils_1.getJSDocTagNames(parentNode).filter(function (name) {
+        return ['isDate', 'isDateTime'].some(function (m) { return m === name; });
     });
-    switch (decoratorName) {
-        case 'IsDate':
+    if (tags.length === 0) {
+        return { typeName: 'datetime' };
+    }
+    switch (tags[0]) {
+        case 'isDate':
             return { typeName: 'date' };
-        case 'IsDateTime':
+        case 'isDateTime':
             return { typeName: 'datetime' };
         default:
             return { typeName: 'datetime' };
@@ -116,10 +127,14 @@ function getEnumerateType(typeNode) {
         return;
     }
     if (enumTypes.length > 1) {
-        throw new Error("Multiple matching enum found for enum " + enumName + "; please make enum names unique.");
+        throw new exceptions_1.GenerateMetadataError(typeNode, "Multiple matching enum found for enum " + enumName + "; please make enum names unique.");
     }
     var enumDeclaration = enumTypes[0];
     function getEnumValue(member) {
+        var constantValue = metadataGenerator_1.MetadataGenerator.current.typeChecker.getConstantValue(member);
+        if (constantValue !== null) {
+            return constantValue;
+        }
         var initializer = member.initializer;
         if (initializer) {
             if (initializer.expression) {
@@ -156,7 +171,7 @@ function getLiteralType(typeNode) {
         return;
     }
     if (literalTypes.length > 1) {
-        throw new Error("Multiple matching enum found for enum " + literalName + "; please make enum names unique.");
+        throw new exceptions_1.GenerateMetadataError(typeNode, "Multiple matching enum found for enum " + literalName + "; please make enum names unique.");
     }
     var unionTypes = literalTypes[0].type.types;
     return {
@@ -184,7 +199,7 @@ function getReferenceType(type, genericTypes) {
             properties: properties,
             typeName: typeNameWithGenerics,
         };
-        if (additionalProperties && additionalProperties.length) {
+        if (additionalProperties) {
             referenceType.additionalProperties = additionalProperties;
         }
         var extendedProperties = getInheritedProperties(modelTypeDeclaration);
@@ -223,7 +238,7 @@ function getAnyTypeName(typeNode) {
         return 'object';
     }
     if (typeNode.kind !== ts.SyntaxKind.TypeReference) {
-        throw new Error("Unknown type: " + ts.SyntaxKind[typeNode.kind]);
+        throw new exceptions_1.GenerateMetadataError(typeNode, "Unknown type: " + ts.SyntaxKind[typeNode.kind] + ".");
     }
     var typeReference = typeNode;
     try {
@@ -281,14 +296,14 @@ function resolveModelTypeScope(leftmost, statements) {
             return moduleDeclaration.name.text.toLowerCase() === leftmostName.toLowerCase();
         });
         if (!moduleDeclarations.length) {
-            throw new Error("No matching module declarations found for " + leftmostName);
+            throw new exceptions_1.GenerateMetadataError(leftmost, "No matching module declarations found for " + leftmostName + ".");
         }
         if (moduleDeclarations.length > 1) {
-            throw new Error("Multiple matching module declarations found for " + leftmostName + "; please make module declarations unique");
+            throw new exceptions_1.GenerateMetadataError(leftmost, "Multiple matching module declarations found for " + leftmostName + "; please make module declarations unique.");
         }
         var moduleBlock = moduleDeclarations[0].body;
         if (moduleBlock === null || moduleBlock.kind !== ts.SyntaxKind.ModuleBlock) {
-            throw new Error("Module declaration found for " + leftmostName + " has no body");
+            throw new exceptions_1.GenerateMetadataError(leftmost, "Module declaration found for " + leftmostName + " has no body.");
         }
         statements = moduleBlock.statements;
         leftmost = leftmost.parent;
@@ -313,11 +328,11 @@ function getModelTypeDeclaration(type) {
         return modelTypeDeclaration.name.text === typeName;
     });
     if (!modelTypes.length) {
-        throw new Error("No matching model found for referenced type " + typeName);
+        throw new exceptions_1.GenerateMetadataError(type, "No matching model found for referenced type " + typeName + ".");
     }
     if (modelTypes.length > 1) {
         var conflicts = modelTypes.map(function (modelType) { return modelType.getSourceFile().fileName; }).join('"; "');
-        throw new Error("Multiple matching models found for referenced type " + typeName + "; please make model names unique. Conflicts found: \"" + conflicts + "\"");
+        throw new exceptions_1.GenerateMetadataError(type, "Multiple matching models found for referenced type " + typeName + "; please make model names unique. Conflicts found: \"" + conflicts + "\".");
     }
     return modelTypes[0];
 }
@@ -331,7 +346,7 @@ function getModelTypeProperties(node, genericTypes) {
             var propertyDeclaration = member;
             var identifier = propertyDeclaration.name;
             if (!propertyDeclaration.type) {
-                throw new Error('No valid type found for property declaration.');
+                throw new exceptions_1.GenerateMetadataError(node, "No valid type found for property declaration.");
             }
             // Declare a variable that can be overridden if needed
             var aType = propertyDeclaration.type;
@@ -370,7 +385,8 @@ function getModelTypeProperties(node, genericTypes) {
                 description: getNodeDescription(propertyDeclaration),
                 name: identifier.text,
                 required: !propertyDeclaration.questionToken,
-                type: type
+                type: type,
+                validators: validatorUtils_1.getPropertyValidators(propertyDeclaration),
             };
         });
     }
@@ -399,25 +415,14 @@ function getModelTypeProperties(node, genericTypes) {
         .map(function (declaration) {
         var identifier = declaration.name;
         if (!declaration.type) {
-            throw new Error('No valid type found for property declaration.');
+            throw new exceptions_1.GenerateMetadataError(declaration, "No valid type found for property declaration.");
         }
-        var options = decoratorUtils_1.getDecoratorOptionValue(declaration, function (identify) {
-            return ['IsString', 'IsInt', 'IsLong', 'IsDouble', 'IsFloat', 'IsDate', 'IsDateTime', 'IsArray'].some(function (m) { return m === identify.text; });
-        });
         return {
             description: getNodeDescription(declaration),
             name: identifier.text,
             required: !declaration.questionToken,
             type: ResolveType(declaration.type),
-            // tslint:disable-next-line:object-literal-sort-keys
-            maxLength: options && options.maxLength ? options.maxLength : undefined,
-            minLength: options && options.minLength ? options.minLength : undefined,
-            pattern: options && options.pattern ? options.pattern : undefined,
-            maximum: options && options.max ? options.max : undefined,
-            minimum: options && options.min ? options.min : undefined,
-            maxItems: options && options.maxItems ? options.maxItems : undefined,
-            minItems: options && options.minItems ? options.minItems : undefined,
-            uniqueItens: options && options.uniqueItens ? options.uniqueItens : undefined,
+            validators: validatorUtils_1.getPropertyValidators(declaration),
         };
     });
 }
@@ -425,21 +430,16 @@ function getModelTypeAdditionalProperties(node) {
     try {
         if (node.kind === ts.SyntaxKind.InterfaceDeclaration) {
             var interfaceDeclaration = node;
-            return interfaceDeclaration.members
-                .filter(function (member) { return member.kind === ts.SyntaxKind.IndexSignature; })
-                .map(function (member) {
-                var indexSignatureDeclaration = member;
-                var indexType = ResolveType(indexSignatureDeclaration.parameters[0].type);
-                if (indexType.typeName !== 'string') {
-                    throw new Error('Only string indexers are supported ' + indexType.typeName);
-                }
-                return {
-                    description: '',
-                    name: '',
-                    required: true,
-                    type: ResolveType(indexSignatureDeclaration.type)
-                };
-            });
+            var indexMember = interfaceDeclaration.members.find(function (member) { return member.kind === ts.SyntaxKind.IndexSignature; });
+            if (!indexMember) {
+                return undefined;
+            }
+            var indexSignatureDeclaration = indexMember;
+            var indexType = ResolveType(indexSignatureDeclaration.parameters[0].type);
+            if (indexType.typeName !== 'string') {
+                throw new exceptions_1.GenerateMetadataError(node, "Only string indexers are supported.");
+            }
+            return ResolveType(indexSignatureDeclaration.type);
         }
     }
     catch (e) {

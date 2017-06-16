@@ -1,5 +1,5 @@
 import * as ts from 'typescript';
-import { Method } from './metadataGenerator';
+import { Method } from './types';
 export declare class MethodGenerator {
     private readonly node;
     private method;

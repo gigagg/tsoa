@@ -7,7 +7,9 @@ var routeGenerator_1 = require("./routeGeneration/routeGenerator");
 var yargs = require("yargs");
 var fs = require("fs");
 var path = require("path");
+var PrettyError = require("pretty-error");
 var workingDir = process.cwd();
+var pe = new PrettyError();
 var getPackageJsonValue = function (key) {
     try {
         var packageJson = require(workingDir + "/package.json");
@@ -39,6 +41,9 @@ var getConfig = function (configPath) {
         }
     }
     return config;
+};
+var validateCompilerOptions = function (config) {
+    return config || {};
 };
 var validateSwaggerConfig = function (config) {
     if (!config.outputDirectory) {
@@ -103,12 +108,15 @@ yargs
         if (args.host) {
             config.swagger.host = args.host;
         }
+        var compilerOptions = validateCompilerOptions(config.compilerOptions);
         var swaggerConfig = validateSwaggerConfig(config.swagger);
-        var metadata = new metadataGenerator_1.MetadataGenerator(swaggerConfig.entryFile).Generate();
+        var metadata = new metadataGenerator_1.MetadataGenerator(swaggerConfig.entryFile, compilerOptions).Generate();
         new specGenerator_1.SpecGenerator(metadata, config.swagger).GenerateJson(swaggerConfig.outputDirectory);
+        // tslint:disable-next-line:no-console
+        console.info('Generate swagger successful.');
     }
     catch (err) {
-        console.error(err);
+        console.error('Generate swagger error.\n', pe.render(err));
     }
 })
     .command('routes', 'Generate routes', {
@@ -120,8 +128,9 @@ yargs
         if (args.basePath) {
             config.routes.basePath = args.basePath;
         }
+        var compilerOptions = validateCompilerOptions(config.compilerOptions);
         var routesConfig = validateRoutesConfig(config.routes);
-        var metadata = new metadataGenerator_1.MetadataGenerator(routesConfig.entryFile).Generate();
+        var metadata = new metadataGenerator_1.MetadataGenerator(routesConfig.entryFile, compilerOptions).Generate();
         var routeGenerator = new routeGenerator_1.RouteGenerator(metadata, routesConfig);
         var pathTransformer = void 0;
         var template = void 0;
@@ -144,9 +153,11 @@ yargs
             template = routesConfig.middlewareTemplate;
         }
         routeGenerator.GenerateCustomRoutes(template, pathTransformer);
+        // tslint:disable-next-line:no-console
+        console.info('Generate routes successful.');
     }
     catch (err) {
-        console.error(err);
+        console.error('Generate routes error.\n', pe.render(err));
     }
 })
     .help('help')

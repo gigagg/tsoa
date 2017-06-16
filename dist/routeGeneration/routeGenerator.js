@@ -71,14 +71,14 @@ var RouteGenerator = (function () {
             controllers: this.metadata.Controllers.map(function (controller) {
                 return {
                     actions: controller.methods.map(function (method) {
-                        var parameters = {};
+                        var parameterObjs = {};
                         method.parameters.forEach(function (parameter) {
-                            parameters[parameter.parameterName] = _this.getParameterSchema(parameter);
+                            parameterObjs[parameter.parameterName] = _this.getParameterSchema(parameter);
                         });
                         return {
                             method: method.method.toLowerCase(),
                             name: method.name,
-                            parameters: parameters,
+                            parameters: parameterObjs,
                             path: pathTransformer(method.path),
                             security: method.security
                         };
@@ -106,8 +106,8 @@ var RouteGenerator = (function () {
                 name: key,
                 properties: properties
             };
-            if (referenceType.additionalProperties && referenceType.additionalProperties.length) {
-                templateModel.additionalProperties = referenceType.additionalProperties.map(function (property) { return _this.getTemplateAdditionalProperty(property); });
+            if (referenceType.additionalProperties) {
+                templateModel.additionalProperties = _this.getTemplateAdditionalProperty(referenceType.additionalProperties);
             }
             return templateModel;
         });
@@ -117,10 +117,13 @@ var RouteGenerator = (function () {
         return "./" + path.relative(this.options.routesDir, fileLocation).replace(/\\/g, '/');
     };
     RouteGenerator.prototype.getPropertySchema = function (source) {
-        var templateProperty = {
+        var propertySchema = {
             required: source.required,
             typeName: source.type.typeName
         };
+        if (Object.keys(source.validators).length > 0) {
+            propertySchema.validators = source.validators;
+        }
         var arrayType = source.type;
         if (arrayType.elementType) {
             var arraySchema = {
@@ -130,28 +133,46 @@ var RouteGenerator = (function () {
             if (arrayEnumType.enumMembers) {
                 arraySchema.enumMembers = arrayEnumType.enumMembers;
             }
-            templateProperty.array = arraySchema;
+            propertySchema.array = arraySchema;
         }
         var enumType = source.type;
         if (enumType.enumMembers) {
-            templateProperty.enumMembers = enumType.enumMembers;
+            propertySchema.enumMembers = enumType.enumMembers;
         }
-        return templateProperty;
+        return propertySchema;
     };
-    RouteGenerator.prototype.getTemplateAdditionalProperty = function (source) {
+    RouteGenerator.prototype.getTemplateAdditionalProperty = function (type) {
         var templateAdditionalProperty = {
-            typeName: source.type.typeName
+            typeName: type.typeName
         };
+        var arrayType = type;
+        if (arrayType.elementType) {
+            var arraySchema = {
+                typeName: arrayType.elementType.typeName
+            };
+            var arrayEnumType = arrayType.elementType;
+            if (arrayEnumType.enumMembers) {
+                arraySchema.enumMembers = arrayEnumType.enumMembers;
+            }
+            templateAdditionalProperty.array = arraySchema;
+        }
+        var enumType = type;
+        if (enumType.enumMembers) {
+            templateAdditionalProperty.enumMembers = enumType.enumMembers;
+        }
         return templateAdditionalProperty;
     };
-    RouteGenerator.prototype.getParameterSchema = function (parameter) {
+    RouteGenerator.prototype.getParameterSchema = function (source) {
         var parameterSchema = {
-            in: parameter.in,
-            name: parameter.name,
-            required: parameter.required,
-            typeName: parameter.type.typeName
+            in: source.in,
+            name: source.name,
+            required: source.required ? true : undefined,
+            typeName: source.type.typeName
         };
-        var arrayType = parameter.type;
+        if (Object.keys(source.validators).length > 0) {
+            parameterSchema.validators = source.validators;
+        }
+        var arrayType = source.type;
         if (arrayType.elementType) {
             var tempArrayType = {
                 typeName: arrayType.elementType.typeName
@@ -162,7 +183,7 @@ var RouteGenerator = (function () {
             }
             parameterSchema.array = tempArrayType;
         }
-        var enumType = parameter.type;
+        var enumType = source.type;
         if (enumType.enumMembers) {
             parameterSchema.enumMembers = enumType.enumMembers;
         }

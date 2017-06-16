@@ -1,5 +1,5 @@
 import { SwaggerConfig } from './../config';
-import { Metadata } from '../metadataGeneration/metadataGenerator';
+import { Metadata } from '../metadataGeneration/types';
 import { Swagger } from './swagger';
 export declare class SpecGenerator {
     private readonly metadata;
@@ -13,7 +13,7 @@ export declare class SpecGenerator {
     private buildBodyPropParameter(controllerName, method);
     private buildParameter(parameter);
     private buildProperties(properties);
-    private buildAdditionalProperties(properties);
+    private buildAdditionalProperties(type);
     private buildOperation(controllerName, method);
     private getOperationId(controllerName, methodName);
     private getSwaggerType(type);

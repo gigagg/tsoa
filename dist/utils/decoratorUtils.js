@@ -4,7 +4,7 @@ var expressionParser_1 = require("../metadataGeneration/expressionParser");
 function getDecorators(node, isMatching) {
     var decorators = node.decorators;
     if (!decorators || !decorators.length) {
-        return;
+        return [];
     }
     return decorators
         .map(function (d) { return d.expression; })

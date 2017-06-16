@@ -15,8 +15,8 @@ const models: any = {
       "boolArray": { "required": true, "typeName": "array", "array": { "typeName": "boolean" } },
       "enumValue": { "required": false, "typeName": "enum", "enumMembers": [0, 1] },
       "enumArray": { "required": false, "typeName": "array", "array": { "typeName": "enum", "enumMembers": [0, 1] } },
-      "enumStringValue": { "required": false, "typeName": "enum", "enumMembers": ["VALUE_1", "VALUE_2"] },
-      "enumStringArray": { "required": false, "typeName": "array", "array": { "typeName": "enum", "enumMembers": ["VALUE_1", "VALUE_2"] } },
+      "enumStringValue": { "required": false, "typeName": "enum", "enumMembers": [0, 1] },
+      "enumStringArray": { "required": false, "typeName": "array", "array": { "typeName": "enum", "enumMembers": [0, 1] } },
       "modelValue": { "required": true, "typeName": "TestSubModel" },
       "modelsArray": { "required": true, "typeName": "array", "array": { "typeName": "TestSubModel" } },
       "strLiteralVal": { "required": true, "typeName": "enum", "enumMembers": ["Foo", "Bar"] },
@@ -87,7 +87,7 @@ const models: any = {
   "TestSubEnumModelContainer": {
     properties: {
     },
-    additionalProperties: { "typeName": "enum", "enumMembers": ["VALUE_1", "VALUE_2"] },
+    additionalProperties: { "typeName": "enum", "enumMembers": [0, 1] },
   },
 };
 
@@ -125,7 +125,6 @@ export function RegisterRoutes(app: any) {
       })
       .catch((error: any) => next(error));
   }
-
 
   function getValidatedArgs(args: any, request: any): any[] {
     const fieldErrors: FieldErrors = {};

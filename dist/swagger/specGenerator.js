@@ -167,14 +167,11 @@ var SpecGenerator = (function () {
         if (parameterType.format) {
             swaggerParameter.format = parameterType.format;
         }
-        swaggerParameter.minimum = parameter.minimum;
-        swaggerParameter.maximum = parameter.maximum;
-        swaggerParameter.minLength = parameter.minLength;
-        swaggerParameter.maxLength = parameter.maxLength;
-        swaggerParameter.pattern = parameter.pattern;
-        swaggerParameter.minItems = parameter.minItems;
-        swaggerParameter.maxItems = parameter.maxItems;
-        swaggerParameter.uniqueItems = parameter.uniqueItems;
+        Object.keys(parameter.validators).forEach(function (key) {
+            if (!key.startsWith('is')) {
+                swaggerParameter[key] = parameter.validators[key].value;
+            }
+        });
         return swaggerParameter;
     };
     SpecGenerator.prototype.buildProperties = function (properties) {
@@ -184,48 +181,35 @@ var SpecGenerator = (function () {
             var swaggerType = _this.getSwaggerType(property.type);
             if (!swaggerType.$ref) {
                 swaggerType.description = property.description;
-                swaggerType.minimum = property.minimum;
-                swaggerType.maximum = property.maximum;
-                swaggerType.minLength = property.minLength;
-                swaggerType.maxLength = property.maxLength;
-                swaggerType.pattern = property.pattern;
-                swaggerType.minItems = property.minItems;
-                swaggerType.maxItems = property.maxItems;
-                swaggerType.uniqueItems = property.uniqueItems;
+                Object.keys(property.validators).forEach(function (key) {
+                    swaggerType[key] = property.validators[key].value;
+                });
             }
             swaggerProperties[property.name] = swaggerType;
         });
         return swaggerProperties;
     };
-    SpecGenerator.prototype.buildAdditionalProperties = function (properties) {
-        var _this = this;
-        var swaggerAdditionalProperties = {};
-        properties.forEach(function (property) {
-            var swaggerType = _this.getSwaggerType(property.type);
-            if (swaggerType.$ref) {
-                swaggerAdditionalProperties['$ref'] = swaggerType.$ref;
-            }
-        });
-        return swaggerAdditionalProperties;
+    SpecGenerator.prototype.buildAdditionalProperties = function (type) {
+        return this.getSwaggerType(type);
     };
     SpecGenerator.prototype.buildOperation = function (controllerName, method) {
         var _this = this;
-        var responses = {};
+        var swaggerResponses = {};
         method.responses.forEach(function (res) {
-            responses[res.name] = {
+            swaggerResponses[res.name] = {
                 description: res.description
             };
             if (res.schema && _this.getSwaggerType(res.schema).type !== 'void') {
-                responses[res.name]['schema'] = _this.getSwaggerType(res.schema);
+                swaggerResponses[res.name]['schema'] = _this.getSwaggerType(res.schema);
             }
             if (res.examples) {
-                responses[res.name]['examples'] = { 'application/json': res.examples };
+                swaggerResponses[res.name]['examples'] = { 'application/json': res.examples };
             }
         });
         return {
             operationId: this.getOperationId(controllerName, method.name),
             produces: ['application/json'],
-            responses: responses
+            responses: swaggerResponses
         };
     };
     SpecGenerator.prototype.getOperationId = function (controllerName, methodName) {

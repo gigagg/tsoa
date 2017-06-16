@@ -1,5 +1,5 @@
-import { Parameter } from './metadataGenerator';
 import * as ts from 'typescript';
+import { Parameter } from './types';
 export declare class ParameterGenerator {
     private readonly parameter;
     private readonly method;
@@ -14,9 +14,8 @@ export declare class ParameterGenerator {
     private getHeaderParameter(parameter);
     private getQueryParameter(parameter);
     private getPathParameter(parameter);
-    private getDetailParameter(parameter);
     private getParameterDescription(node);
-    private supportsBodyParameters(method);
+    private supportBodyMethod(method);
     private supportParameterDecorator(decoratorName);
     private supportPathDataType(parameterType);
     private getValidatedType(parameter);
