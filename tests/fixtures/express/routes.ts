@@ -1,5 +1,5 @@
 /* tslint:disable */
-import { ValidateParam } from '../../../src/routeGeneration/templateHelpers';
+import { ValidateParam, FieldErrors, ValidateError } from '../../../src/routeGeneration/templateHelpers';
 import { Controller } from '../../../src/interfaces/controller';
 import { PutTestController } from './../controllers/putController';
 import { PostTestController } from './../controllers/postController';
@@ -9,6 +9,8 @@ import { DeleteTestController } from './../controllers/deleteController';
 import { MethodController } from './../controllers/methodController';
 import { ParameterController } from './../controllers/parameterController';
 import { SecurityTestController } from './../controllers/securityController';
+import { ValidateController } from './../controllers/validateController';
+import { TestController } from './../controllers/testController';
 import { set } from 'lodash';
 import { expressAuthentication } from './authentication';
 
@@ -36,6 +38,8 @@ const models: any = {
       "modelsObjectIndirectNS2": { "required": false, "typeName": "TestSubModelContainerNamespace.InnerNamespace.TestSubModelContainer2" },
       "modelsObjectIndirectNS_Alias": { "required": false, "typeName": "TestSubModelContainerNamespace_TestSubModelContainer" },
       "modelsObjectIndirectNS2_Alias": { "required": false, "typeName": "TestSubModelContainerNamespace_InnerNamespace_TestSubModelContainer2" },
+      "modelsArrayIndirect": { "required": false, "typeName": "TestSubArrayModelContainer" },
+      "modelsEnumIndirect": { "required": false, "typeName": "TestSubEnumModelContainer" },
       "id": { "required": true, "typeName": "double" },
     },
   },
@@ -57,9 +61,7 @@ const models: any = {
   "TestSubModelContainer": {
     properties: {
     },
-    additionalProperties: [
-      { typeName: 'TestSubModel2' },
-    ],
+    additionalProperties: { "typeName": "TestSubModel2" },
   },
   "TestSubModelNamespace.TestSubModelNS": {
     properties: {
@@ -72,16 +74,12 @@ const models: any = {
   "TestSubModelContainerNamespace.TestSubModelContainer": {
     properties: {
     },
-    additionalProperties: [
-      { typeName: 'TestSubModelNamespace.TestSubModelNS' },
-    ],
+    additionalProperties: { "typeName": "TestSubModelNamespace.TestSubModelNS" },
   },
   "TestSubModelContainerNamespace.InnerNamespace.TestSubModelContainer2": {
     properties: {
     },
-    additionalProperties: [
-      { typeName: 'TestSubModelNamespace.TestSubModelNS' },
-    ],
+    additionalProperties: { "typeName": "TestSubModelNamespace.TestSubModelNS" },
   },
   "TestSubModelContainerNamespace_TestSubModelContainer": {
     properties: {
@@ -91,10 +89,20 @@ const models: any = {
     properties: {
     },
   },
+  "TestSubArrayModelContainer": {
+    properties: {
+    },
+    additionalProperties: { "typeName": "array", "array": { "typeName": "TestSubModel2" } },
+  },
+  "TestSubEnumModelContainer": {
+    properties: {
+    },
+    additionalProperties: { "typeName": "enum", "enumMembers": ["VALUE_1", "VALUE_2"] },
+  },
   "TestClassModel": {
     properties: {
-      "publicStringProperty": { "required": true, "typeName": "string" },
-      "optionalPublicStringProperty": { "required": false, "typeName": "string" },
+      "publicStringProperty": { "required": true, "typeName": "string", "validators": { "minLength": { "value": 3 }, "maxLength": { "value": 20 }, "pattern": { "value": "^[a-zA-Z]+$" } } },
+      "optionalPublicStringProperty": { "required": false, "typeName": "string", "validators": { "minLength": { "value": 0 }, "maxLength": { "value": 10 } } },
       "stringProperty": { "required": true, "typeName": "string" },
       "publicConstructorVar": { "required": true, "typeName": "string" },
       "optionalPublicConstructorVar": { "required": false, "typeName": "string" },
@@ -142,7 +150,7 @@ const models: any = {
     properties: {
       "firstname": { "required": true, "typeName": "string" },
       "lastname": { "required": true, "typeName": "string" },
-      "age": { "required": true, "typeName": "integer" },
+      "age": { "required": true, "typeName": "integer", "validators": { "isInt": { "errorMsg": "* " }, "minimum": { "value": 1 }, "maximum": { "value": 100 } } },
       "weight": { "required": true, "typeName": "float" },
       "human": { "required": true, "typeName": "boolean" },
       "gender": { "required": true, "typeName": "enum", "enumMembers": ["MALE", "FEMALE"] },
@@ -152,6 +160,50 @@ const models: any = {
     properties: {
       "id": { "required": true, "typeName": "double" },
       "name": { "required": true, "typeName": "string" },
+    },
+  },
+  "ValidateDateResponse": {
+    properties: {
+      "minDateValue": { "required": true, "typeName": "datetime" },
+      "maxDateValue": { "required": true, "typeName": "datetime" },
+    },
+  },
+  "ValidateNumberResponse": {
+    properties: {
+      "minValue": { "required": true, "typeName": "double" },
+      "maxValue": { "required": true, "typeName": "double" },
+    },
+  },
+  "ValidateBooleanResponse": {
+    properties: {
+      "boolValue": { "required": true, "typeName": "boolean" },
+    },
+  },
+  "ValidateStringResponse": {
+    properties: {
+      "minLength": { "required": true, "typeName": "string" },
+      "maxLength": { "required": true, "typeName": "string" },
+      "patternValue": { "required": true, "typeName": "string" },
+    },
+  },
+  "ValidateModel": {
+    properties: {
+      "floatValue": { "required": true, "typeName": "float", "validators": { "isFloat": { "errorMsg": "Invalid float error message." } } },
+      "doubleValue": { "required": true, "typeName": "double", "validators": { "isDouble": { "errorMsg": "Invalid double error message." } } },
+      "intValue": { "required": true, "typeName": "integer" },
+      "longValue": { "required": true, "typeName": "long", "validators": { "isLong": { "errorMsg": "Custom Required long number." } } },
+      "booleanValue": { "required": true, "typeName": "boolean" },
+      "arrayValue": { "required": true, "typeName": "array", "array": { "typeName": "double" } },
+      "dateValue": { "required": true, "typeName": "date" },
+      "datetimeValue": { "required": true, "typeName": "datetime" },
+      "numberMax10": { "required": true, "typeName": "double", "validators": { "maximum": { "value": 10 } } },
+      "numberMin5": { "required": true, "typeName": "double", "validators": { "minimum": { "value": 5 } } },
+      "stringMax10Lenght": { "required": true, "typeName": "string", "validators": { "maxLength": { "value": 10 } } },
+      "stringMin5Lenght": { "required": true, "typeName": "string", "validators": { "minLength": { "value": 5 } } },
+      "stringPatternAZaz": { "required": true, "typeName": "string", "validators": { "pattern": { "value": "^[a-zA-Z]+$" } } },
+      "arrayMax5Item": { "required": true, "typeName": "array", "validators": { "maxItems": { "value": 5 } }, "array": { "typeName": "double" } },
+      "arrayMin2Item": { "required": true, "typeName": "array", "validators": { "minItems": { "value": 2 } }, "array": { "typeName": "double" } },
+      "arrayUniqueItem": { "required": true, "typeName": "array", "validators": { "uniqueItems": {} }, "array": { "typeName": "double" } },
     },
   },
 };
@@ -174,7 +226,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.putModel.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -196,7 +248,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.putModelAtLocation.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -218,7 +270,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.putWithMultiReturn.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -241,7 +293,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.putWithId.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -264,7 +316,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.postModel.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -287,7 +339,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.updateModel.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -310,7 +362,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.postClassModel.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -332,7 +384,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.postModelAtLocation.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -354,7 +406,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.postWithMultiReturn.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -377,7 +429,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.postWithId.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -401,7 +453,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.postWithBodyAndQueryParams.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -424,7 +476,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.getGenericRequest.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -447,7 +499,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.patchModel.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -469,7 +521,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.patchModelAtLocation.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -491,7 +543,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.patchWithMultiReturn.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -514,7 +566,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.patchWithId.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -536,7 +588,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.getModel.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -558,7 +610,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.getCurrentModel.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -580,7 +632,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.getClassModel.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -602,7 +654,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.getMultipleModels.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -611,13 +663,13 @@ export function RegisterRoutes(app: any) {
   app.get('/v1/GetTest/:numberPathParam/:booleanPathParam/:stringPathParam',
     function(request: any, response: any, next: any) {
       const args = {
-        numberPathParam: { "in": "path", "name": "numberPathParam", "required": true, "typeName": "double" },
-        stringPathParam: { "in": "path", "name": "stringPathParam", "required": true, "typeName": "string" },
+        numberPathParam: { "in": "path", "name": "numberPathParam", "required": true, "typeName": "double", "validators": { "isDouble": { "errorMsg": "numberPathParam" }, "minimum": { "value": 1 }, "maximum": { "value": 10 } } },
+        stringPathParam: { "in": "path", "name": "stringPathParam", "required": true, "typeName": "string", "validators": { "minLength": { "value": 1 }, "maxLength": { "value": 10 } } },
         booleanPathParam: { "in": "path", "name": "booleanPathParam", "required": true, "typeName": "boolean" },
         booleanParam: { "in": "query", "name": "booleanParam", "required": true, "typeName": "boolean" },
-        stringParam: { "in": "query", "name": "stringParam", "required": true, "typeName": "string" },
+        stringParam: { "in": "query", "name": "stringParam", "required": true, "typeName": "string", "validators": { "isString": { "errorMsg": "Custom error message" }, "minLength": { "value": 3 }, "maxLength": { "value": 10 } } },
         numberParam: { "in": "query", "name": "numberParam", "required": true, "typeName": "double" },
-        optionalStringParam: { "in": "query", "name": "optionalStringParam", "required": false, "typeName": "string" },
+        optionalStringParam: { "in": "query", "name": "optionalStringParam", "typeName": "string" },
       };
 
       let validatedArgs: any[] = [];
@@ -631,7 +683,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.getModelByParams.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -653,7 +705,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.getResponseWithUnionTypeProperty.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -675,7 +727,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.getUnionTypeResponse.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -698,7 +750,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.getRequest.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -721,7 +773,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.getByDataParam.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -743,7 +795,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.getThrowsError.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -765,7 +817,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.getGeneratesTags.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -788,7 +840,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.getBuffer.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -810,7 +862,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.getGenericModel.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -832,7 +884,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.getGenericModelArray.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -854,7 +906,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.getGenericPrimitive.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -876,7 +928,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.getGenericPrimitiveArray.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -898,7 +950,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.deleteWithReturnValue.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -920,7 +972,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.deleteCurrent.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -948,7 +1000,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.getModelByParams.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -970,7 +1022,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.getMethod.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -992,7 +1044,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.postMethod.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -1014,7 +1066,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.patchMethod.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -1036,7 +1088,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.putMethod.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -1058,7 +1110,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.deleteMethod.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -1080,7 +1132,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.description.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -1102,7 +1154,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.tags.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -1124,7 +1176,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.multiResponse.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -1146,7 +1198,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.successResponse.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -1170,7 +1222,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.apiSecurity.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -1195,7 +1247,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.oauthSecurity.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -1217,7 +1269,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.deprecatedMethod.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -1239,7 +1291,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.summaryMethod.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -1250,8 +1302,8 @@ export function RegisterRoutes(app: any) {
       const args = {
         firstname: { "in": "query", "name": "firstname", "required": true, "typeName": "string" },
         lastname: { "in": "query", "name": "last_name", "required": true, "typeName": "string" },
-        age: { "in": "query", "name": "age", "required": true, "typeName": "integer" },
-        weight: { "in": "query", "name": "weight", "required": true, "typeName": "float" },
+        age: { "in": "query", "name": "age", "required": true, "typeName": "integer", "validators": { "isInt": { "errorMsg": "age" } } },
+        weight: { "in": "query", "name": "weight", "required": true, "typeName": "float", "validators": { "isFloat": { "errorMsg": "weight" } } },
         human: { "in": "query", "name": "human", "required": true, "typeName": "boolean" },
         gender: { "in": "query", "name": "gender", "required": true, "typeName": "enum", "enumMembers": ["MALE", "FEMALE"] },
       };
@@ -1267,7 +1319,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.getQuery.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -1278,8 +1330,8 @@ export function RegisterRoutes(app: any) {
       const args = {
         firstname: { "in": "path", "name": "firstname", "required": true, "typeName": "string" },
         lastname: { "in": "path", "name": "last_name", "required": true, "typeName": "string" },
-        age: { "in": "path", "name": "age", "required": true, "typeName": "integer" },
-        weight: { "in": "path", "name": "weight", "required": true, "typeName": "float" },
+        age: { "in": "path", "name": "age", "required": true, "typeName": "integer", "validators": { "isInt": { "errorMsg": "age" } } },
+        weight: { "in": "path", "name": "weight", "required": true, "typeName": "float", "validators": { "isFloat": { "errorMsg": "weight" } } },
         human: { "in": "path", "name": "human", "required": true, "typeName": "boolean" },
         gender: { "in": "path", "name": "gender", "required": true, "typeName": "enum", "enumMembers": ["MALE", "FEMALE"] },
       };
@@ -1295,7 +1347,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.getPath.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -1306,8 +1358,8 @@ export function RegisterRoutes(app: any) {
       const args = {
         firstname: { "in": "header", "name": "firstname", "required": true, "typeName": "string" },
         lastname: { "in": "header", "name": "last_name", "required": true, "typeName": "string" },
-        age: { "in": "header", "name": "age", "required": true, "typeName": "integer" },
-        weight: { "in": "header", "name": "weight", "required": true, "typeName": "float" },
+        age: { "in": "header", "name": "age", "required": true, "typeName": "integer", "validators": { "isInt": { "errorMsg": "age" } } },
+        weight: { "in": "header", "name": "weight", "required": true, "typeName": "float", "validators": { "isFloat": { "errorMsg": "weight" } } },
         human: { "in": "header", "name": "human", "required": true, "typeName": "boolean" },
         gender: { "in": "header", "name": "gender", "required": true, "typeName": "enum", "enumMembers": ["MALE", "FEMALE"] },
       };
@@ -1323,7 +1375,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.getHeader.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -1346,7 +1398,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.getRequest.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -1369,7 +1421,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.getBody.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -1380,8 +1432,8 @@ export function RegisterRoutes(app: any) {
       const args = {
         firstname: { "in": "body-prop", "name": "firstname", "required": true, "typeName": "string" },
         lastname: { "in": "body-prop", "name": "lastname", "required": true, "typeName": "string" },
-        age: { "in": "body-prop", "name": "age", "required": true, "typeName": "integer" },
-        weight: { "in": "body-prop", "name": "weight", "required": true, "typeName": "float" },
+        age: { "in": "body-prop", "name": "age", "required": true, "typeName": "integer", "validators": { "isInt": { "errorMsg": "age" } } },
+        weight: { "in": "body-prop", "name": "weight", "required": true, "typeName": "float", "validators": { "isFloat": { "errorMsg": "weight" } } },
         human: { "in": "body-prop", "name": "human", "required": true, "typeName": "boolean" },
         gender: { "in": "body-prop", "name": "gender", "required": true, "typeName": "enum", "enumMembers": ["MALE", "FEMALE"] },
       };
@@ -1397,7 +1449,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.getBodyProps.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -1422,7 +1474,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.GetWithApi.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -1447,7 +1499,7 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.GetWithApiForKoa.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -1473,7 +1525,308 @@ export function RegisterRoutes(app: any) {
 
 
       const promise = controller.GetWithSecurity.apply(controller, validatedArgs);
-      let statusCode = undefined;
+      let statusCode: any;
+      if (controller instanceof Controller) {
+        statusCode = (controller as Controller).getStatus();
+      }
+      promiseHandler(promise, statusCode, response, next);
+    });
+  app.get('/v1/Validate/parameter/date',
+    function(request: any, response: any, next: any) {
+      const args = {
+        minDateValue: { "in": "query", "name": "minDateValue", "required": true, "typeName": "date", "validators": { "isDate": { "errorMsg": "minDateValue" }, "minDate": { "value": "2018-01-01" } } },
+        maxDateValue: { "in": "query", "name": "maxDateValue", "required": true, "typeName": "date", "validators": { "isDate": { "errorMsg": "maxDateValue" }, "maxDate": { "value": "2016-01-01" } } },
+      };
+
+      let validatedArgs: any[] = [];
+      try {
+        validatedArgs = getValidatedArgs(args, request);
+      } catch (err) {
+        return next(err);
+      }
+
+      const controller = new ValidateController();
+
+
+      const promise = controller.dateValidate.apply(controller, validatedArgs);
+      let statusCode: any;
+      if (controller instanceof Controller) {
+        statusCode = (controller as Controller).getStatus();
+      }
+      promiseHandler(promise, statusCode, response, next);
+    });
+  app.get('/v1/Validate/parameter/datetime',
+    function(request: any, response: any, next: any) {
+      const args = {
+        minDateValue: { "in": "query", "name": "minDateValue", "required": true, "typeName": "datetime", "validators": { "isDateTime": { "errorMsg": "minDateValue" }, "minDate": { "value": "2018-01-01T00:00:00" } } },
+        maxDateValue: { "in": "query", "name": "maxDateValue", "required": true, "typeName": "datetime", "validators": { "isDateTime": { "errorMsg": "maxDateValue" }, "maxDate": { "value": "2016-01-01T00:00:00" } } },
+      };
+
+      let validatedArgs: any[] = [];
+      try {
+        validatedArgs = getValidatedArgs(args, request);
+      } catch (err) {
+        return next(err);
+      }
+
+      const controller = new ValidateController();
+
+
+      const promise = controller.dateTimeValidate.apply(controller, validatedArgs);
+      let statusCode: any;
+      if (controller instanceof Controller) {
+        statusCode = (controller as Controller).getStatus();
+      }
+      promiseHandler(promise, statusCode, response, next);
+    });
+  app.get('/v1/Validate/parameter/integer',
+    function(request: any, response: any, next: any) {
+      const args = {
+        minValue: { "in": "query", "name": "minValue", "required": true, "typeName": "integer", "validators": { "isInt": { "errorMsg": "minValue" }, "minimum": { "value": 5 } } },
+        maxValue: { "in": "query", "name": "maxValue", "required": true, "typeName": "integer", "validators": { "isInt": { "errorMsg": "maxValue" }, "maximum": { "value": 3 } } },
+      };
+
+      let validatedArgs: any[] = [];
+      try {
+        validatedArgs = getValidatedArgs(args, request);
+      } catch (err) {
+        return next(err);
+      }
+
+      const controller = new ValidateController();
+
+
+      const promise = controller.longValidate.apply(controller, validatedArgs);
+      let statusCode: any;
+      if (controller instanceof Controller) {
+        statusCode = (controller as Controller).getStatus();
+      }
+      promiseHandler(promise, statusCode, response, next);
+    });
+  app.get('/v1/Validate/parameter/float',
+    function(request: any, response: any, next: any) {
+      const args = {
+        minValue: { "in": "query", "name": "minValue", "typeName": "float", "validators": { "isFloat": { "errorMsg": "minValue" }, "minimum": { "value": 5.5 } } },
+        maxValue: { "in": "query", "name": "maxValue", "typeName": "float", "validators": { "isFloat": { "errorMsg": "maxValue" }, "maximum": { "value": 3.5 } } },
+      };
+
+      let validatedArgs: any[] = [];
+      try {
+        validatedArgs = getValidatedArgs(args, request);
+      } catch (err) {
+        return next(err);
+      }
+
+      const controller = new ValidateController();
+
+
+      const promise = controller.doubleValidate.apply(controller, validatedArgs);
+      let statusCode: any;
+      if (controller instanceof Controller) {
+        statusCode = (controller as Controller).getStatus();
+      }
+      promiseHandler(promise, statusCode, response, next);
+    });
+  app.get('/v1/Validate/parameter/boolean',
+    function(request: any, response: any, next: any) {
+      const args = {
+        boolValue: { "in": "query", "name": "boolValue", "required": true, "typeName": "boolean", "validators": { "isBoolean": { "errorMsg": "boolValue" } } },
+      };
+
+      let validatedArgs: any[] = [];
+      try {
+        validatedArgs = getValidatedArgs(args, request);
+      } catch (err) {
+        return next(err);
+      }
+
+      const controller = new ValidateController();
+
+
+      const promise = controller.booleanValidate.apply(controller, validatedArgs);
+      let statusCode: any;
+      if (controller instanceof Controller) {
+        statusCode = (controller as Controller).getStatus();
+      }
+      promiseHandler(promise, statusCode, response, next);
+    });
+  app.get('/v1/Validate/parameter/string',
+    function(request: any, response: any, next: any) {
+      const args = {
+        minLength: { "in": "query", "name": "minLength", "required": true, "typeName": "string", "validators": { "minLength": { "value": 5 } } },
+        maxLength: { "in": "query", "name": "maxLength", "required": true, "typeName": "string", "validators": { "maxLength": { "value": 3 } } },
+        patternValue: { "in": "query", "name": "patternValue", "required": true, "typeName": "string", "validators": { "pattern": { "value": "^[a-zA-Z]+$" } } },
+      };
+
+      let validatedArgs: any[] = [];
+      try {
+        validatedArgs = getValidatedArgs(args, request);
+      } catch (err) {
+        return next(err);
+      }
+
+      const controller = new ValidateController();
+
+
+      const promise = controller.stringValidate.apply(controller, validatedArgs);
+      let statusCode: any;
+      if (controller instanceof Controller) {
+        statusCode = (controller as Controller).getStatus();
+      }
+      promiseHandler(promise, statusCode, response, next);
+    });
+  app.get('/v1/Validate/parameter/customRequiredErrorMsg',
+    function(request: any, response: any, next: any) {
+      const args = {
+        longValue: { "in": "query", "name": "longValue", "required": true, "typeName": "long", "validators": { "isLong": { "errorMsg": "Required long number." } } },
+      };
+
+      let validatedArgs: any[] = [];
+      try {
+        validatedArgs = getValidatedArgs(args, request);
+      } catch (err) {
+        return next(err);
+      }
+
+      const controller = new ValidateController();
+
+
+      const promise = controller.customRequiredErrorMsg.apply(controller, validatedArgs);
+      let statusCode: any;
+      if (controller instanceof Controller) {
+        statusCode = (controller as Controller).getStatus();
+      }
+      promiseHandler(promise, statusCode, response, next);
+    });
+  app.get('/v1/Validate/parameter/customInvalidErrorMsg',
+    function(request: any, response: any, next: any) {
+      const args = {
+        longValue: { "in": "query", "name": "longValue", "required": true, "typeName": "long", "validators": { "isLong": { "errorMsg": "Invalid long number." } } },
+      };
+
+      let validatedArgs: any[] = [];
+      try {
+        validatedArgs = getValidatedArgs(args, request);
+      } catch (err) {
+        return next(err);
+      }
+
+      const controller = new ValidateController();
+
+
+      const promise = controller.customInvalidErrorMsg.apply(controller, validatedArgs);
+      let statusCode: any;
+      if (controller instanceof Controller) {
+        statusCode = (controller as Controller).getStatus();
+      }
+      promiseHandler(promise, statusCode, response, next);
+    });
+  app.post('/v1/Validate/body',
+    function(request: any, response: any, next: any) {
+      const args = {
+        body: { "in": "body", "name": "body", "required": true, "typeName": "ValidateModel" },
+      };
+
+      let validatedArgs: any[] = [];
+      try {
+        validatedArgs = getValidatedArgs(args, request);
+      } catch (err) {
+        return next(err);
+      }
+
+      const controller = new ValidateController();
+
+
+      const promise = controller.bodyValidate.apply(controller, validatedArgs);
+      let statusCode: any;
+      if (controller instanceof Controller) {
+        statusCode = (controller as Controller).getStatus();
+      }
+      promiseHandler(promise, statusCode, response, next);
+    });
+  app.get('/v1/Controller/normalStatusCode',
+    function(request: any, response: any, next: any) {
+      const args = {
+      };
+
+      let validatedArgs: any[] = [];
+      try {
+        validatedArgs = getValidatedArgs(args, request);
+      } catch (err) {
+        return next(err);
+      }
+
+      const controller = new TestController();
+
+
+      const promise = controller.normalStatusCode.apply(controller, validatedArgs);
+      let statusCode: any;
+      if (controller instanceof Controller) {
+        statusCode = (controller as Controller).getStatus();
+      }
+      promiseHandler(promise, statusCode, response, next);
+    });
+  app.get('/v1/Controller/customNomalStatusCode',
+    function(request: any, response: any, next: any) {
+      const args = {
+      };
+
+      let validatedArgs: any[] = [];
+      try {
+        validatedArgs = getValidatedArgs(args, request);
+      } catch (err) {
+        return next(err);
+      }
+
+      const controller = new TestController();
+
+
+      const promise = controller.customNomalStatusCode.apply(controller, validatedArgs);
+      let statusCode: any;
+      if (controller instanceof Controller) {
+        statusCode = (controller as Controller).getStatus();
+      }
+      promiseHandler(promise, statusCode, response, next);
+    });
+  app.get('/v1/Controller/noContentStatusCode',
+    function(request: any, response: any, next: any) {
+      const args = {
+      };
+
+      let validatedArgs: any[] = [];
+      try {
+        validatedArgs = getValidatedArgs(args, request);
+      } catch (err) {
+        return next(err);
+      }
+
+      const controller = new TestController();
+
+
+      const promise = controller.noContentStatusCode.apply(controller, validatedArgs);
+      let statusCode: any;
+      if (controller instanceof Controller) {
+        statusCode = (controller as Controller).getStatus();
+      }
+      promiseHandler(promise, statusCode, response, next);
+    });
+  app.get('/v1/Controller/customNoContentStatusCode',
+    function(request: any, response: any, next: any) {
+      const args = {
+      };
+
+      let validatedArgs: any[] = [];
+      try {
+        validatedArgs = getValidatedArgs(args, request);
+      } catch (err) {
+        return next(err);
+      }
+
+      const controller = new TestController();
+
+
+      const promise = controller.customNoContentStatusCode.apply(controller, validatedArgs);
+      let statusCode: any;
       if (controller instanceof Controller) {
         statusCode = (controller as Controller).getStatus();
       }
@@ -1497,33 +1850,39 @@ export function RegisterRoutes(app: any) {
     return promise
       .then((data: any) => {
         if (data) {
-          response.json(data);
-          response.status(statusCode || 200);
+          response.status(statusCode || 200).json(data);;
         } else {
-          response.status(statusCode || 204);
-          response.end();
+          response.status(statusCode || 204).end();
         }
       })
       .catch((error: any) => next(error));
   }
 
+
   function getValidatedArgs(args: any, request: any): any[] {
-    return Object.keys(args).map(key => {
+    const fieldErrors: FieldErrors = {};
+    const values = Object.keys(args).map((key) => {
       const name = args[key].name;
       switch (args[key].in) {
         case 'request':
           return request;
         case 'query':
-          return ValidateParam(args[key], request.query[name], models, name)
+          return ValidateParam(args[key], request.query[name], models, name, fieldErrors);
         case 'path':
-          return ValidateParam(args[key], request.params[name], models, name)
+          return ValidateParam(args[key], request.params[name], models, name, fieldErrors);
         case 'header':
-          return ValidateParam(args[key], request.header(name), models, name);
+          return ValidateParam(args[key], request.header(name), models, name, fieldErrors);
         case 'body':
-          return ValidateParam(args[key], request.body, models, name);
+          return ValidateParam(args[key], request.body, models, name, fieldErrors);
         case 'body-prop':
-          return ValidateParam(args[key], request.body[name], models, name);
+          return ValidateParam(args[key], request.body[name], models, name, fieldErrors);
       }
     });
+    if (Object.keys(fieldErrors).length > 0) {
+      throw new ValidateError(fieldErrors, '');
+    }
+    return values;
   }
 }
+
+

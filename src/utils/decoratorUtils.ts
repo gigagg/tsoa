@@ -3,7 +3,7 @@ import { parseExpression } from '../metadataGeneration/expressionParser';
 
 export function getDecorators(node: ts.Node, isMatching: (identifier: ts.Identifier) => boolean) {
   const decorators = node.decorators;
-  if (!decorators || !decorators.length) { return; }
+  if (!decorators || !decorators.length) { return []; }
 
   return decorators
     .map(d => d.expression as ts.CallExpression)
